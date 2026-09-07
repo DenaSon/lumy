@@ -1,13 +1,14 @@
 <?php
 
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
-new class extends Component
+new #[Layout('layouts.panel')] class extends Component
 {
     //
 };
 ?>
 
 <div>
-    {{-- Breathing in, I calm body and mind. Breathing out, I smile. - Thich Nhat Hanh --}}
+    {{-- Lumy dashboard foundation. --}}
 </div>
