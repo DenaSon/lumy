@@ -4,6 +4,7 @@ use App\Integrations\Zernio\InstagramSyncService;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('lumy:sync-instagram {--only= : Run one stage: contents, content-analytics, account-insights, demographics, followers} {--from= : UTC start date (YYYY-MM-DD) for date-aware stages} {--to= : UTC end date (YYYY-MM-DD) for date-aware stages}', function () {
     $stageMap = [
@@ -133,3 +134,93 @@ Artisan::command('lumy:sync-instagram {--only= : Run one stage: contents, conten
 
     return 0;
 })->purpose('Synchronize all or one Lumy Instagram data stage through Zernio.');
+
+Artisan::command('lumy:sync-instagram-incremental {--days=30 : Rolling number of UTC days to refresh for content analytics (1-90)}', function () {
+    $days = filter_var($this->option('days'), FILTER_VALIDATE_INT);
+
+    if ($days === false || $days < 1 || $days > 90) {
+        $this->error('--days must be an integer between 1 and 90.');
+
+        return 1;
+    }
+
+    $providerAccountId = trim((string) config('zernio.account_id'));
+
+    if ($providerAccountId === '') {
+        $this->error('ZERNIO_ACCOUNT_ID is not configured.');
+
+        return 1;
+    }
+
+    $account = SocialAccount::query()
+        ->where('provider', 'zernio')
+        ->where('provider_account_id', $providerAccountId)
+        ->first();
+
+    if ($account === null) {
+        $this->error('No local Zernio social account exists yet. Run `php artisan lumy:sync-instagram` once to bootstrap the account.');
+
+        return 1;
+    }
+
+    $to = CarbonImmutable::now('UTC')->startOfDay();
+    $from = $to->subDays($days);
+
+    try {
+        $service = app(InstagramSyncService::class);
+        $summary = [
+            'contents' => $service->syncContents($account),
+            'content_analytics' => $service->syncContentAnalytics($account, $from->toDateString(), $to->toDateString()),
+        ];
+        $account->update(['last_synced_at' => now()]);
+    } catch (Throwable $exception) {
+        $this->error($exception->getMessage());
+
+        return 1;
+    }
+
+    $rows = [];
+    $hasFailures = false;
+
+    foreach (['contents', 'content_analytics'] as $key) {
+        $result = $summary[$key];
+        $failed = (int) ($result['failed_count'] ?? 0);
+        $hasFailures = $hasFailures || $failed > 0;
+        $rows[] = [
+            $key,
+            $result['discovered_count'] ?? 0,
+            $result['created_count'] ?? 0,
+            $result['updated_count'] ?? 0,
+            $failed,
+        ];
+
+        foreach (array_slice($result['errors'] ?? [], 0, 10) as $error) {
+            $this->warn("{$key}: {$error}");
+        }
+    }
+
+    $this->info("Incremental Instagram sync completed for the last {$days} days.");
+    $this->table(['Sync', 'Discovered', 'Created', 'Updated', 'Failed'], $rows);
+
+    return $hasFailures ? 1 : 0;
+})->purpose('Refresh recent Instagram content metadata and analytics without a full historical sync.');
+
+Schedule::command('lumy:sync-instagram-incremental')
+    ->name('lumy-instagram-incremental')
+    ->everyTwoHours()
+    ->withoutOverlapping();
+
+Schedule::command('lumy:sync-instagram --only=account-insights')
+    ->name('lumy-instagram-account-insights')
+    ->dailyAt('02:00')
+    ->withoutOverlapping();
+
+Schedule::command('lumy:sync-instagram --only=demographics')
+    ->name('lumy-instagram-demographics')
+    ->dailyAt('02:15')
+    ->withoutOverlapping();
+
+Schedule::command('lumy:sync-instagram --only=followers')
+    ->name('lumy-instagram-followers')
+    ->dailyAt('02:30')
+    ->withoutOverlapping();
