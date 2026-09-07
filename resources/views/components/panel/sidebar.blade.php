@@ -59,6 +59,17 @@
                     <span>محتوا</span>
                 </a>
             </li>
+
+            <li>
+                <a
+                    wire:navigate
+                    wire:current="menu-active"
+                    href="{{ route('intelligence.index') }}"
+                >
+                    <x-icon name="o-light-bulb" class="w-5 h-5" />
+                    <span>هوشمندی</span>
+                </a>
+            </li>
         </ul>
     </div>
 </aside>
