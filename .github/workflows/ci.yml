@@ -8,9 +8,6 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,8 +15,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref }}
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -27,35 +22,11 @@ jobs:
           php-version: '8.4'
           coverage: none
 
-      - name: Remove Fortify dependency
-        if: github.event_name == 'pull_request' && github.head_ref == 'chore/lumy-bootstrap-cleanup'
-        run: |
-          if grep -q '"laravel/fortify"' composer.json; then
-            composer remove laravel/fortify --no-interaction --no-progress --no-scripts
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add composer.json composer.lock
-            git commit -m "chore: remove Fortify dependency"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
-
-      - name: Remove passkeys frontend dependency
-        if: github.event_name == 'pull_request' && github.head_ref == 'chore/lumy-bootstrap-cleanup'
-        run: |
-          if grep -q '"@laravel/passkeys"' package.json; then
-            npm uninstall @laravel/passkeys --package-lock-only --ignore-scripts
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package.json package-lock.json
-            git commit -m "chore: remove passkeys frontend dependency"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
 
       - name: Prepare Laravel runtime directories
         run: mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
