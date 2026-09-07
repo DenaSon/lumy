@@ -48,6 +48,17 @@
                     <span>داشبورد</span>
                 </a>
             </li>
+
+            <li>
+                <a
+                    wire:navigate
+                    wire:current="menu-active"
+                    href="{{ route('content.index') }}"
+                >
+                    <x-icon name="o-rectangle-stack" class="w-5 h-5" />
+                    <span>محتوا</span>
+                </a>
+            </li>
         </ul>
     </div>
 </aside>
