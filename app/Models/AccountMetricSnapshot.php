@@ -17,6 +17,7 @@ class AccountMetricSnapshot extends Model
             'period_start' => 'datetime',
             'period_end' => 'datetime',
             'captured_at' => 'datetime',
+            'provider_updated_at' => 'datetime',
             'provider_payload' => 'array',
             'created_at' => 'datetime',
         ];
