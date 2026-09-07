@@ -29,8 +29,11 @@ return new class extends Migration
             $table->json('provider_payload')->nullable();
             $table->timestamp('created_at')->useCurrent();
 
-            $table->index(['social_account_id', 'captured_at']);
-            $table->index(['social_account_id', 'period_start', 'period_end']);
+            $table->index(['social_account_id', 'captured_at'], 'acct_metrics_account_captured_idx');
+            $table->index(
+                ['social_account_id', 'period_start', 'period_end'],
+                'acct_metrics_account_period_idx',
+            );
         });
     }
 
