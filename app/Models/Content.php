@@ -36,6 +36,11 @@ class Content extends Model
         return $this->hasMany(ContentMetricSnapshot::class)->orderBy('captured_at');
     }
 
+    public function latestMetricSnapshot(): HasOne
+    {
+        return $this->hasOne(ContentMetricSnapshot::class)->latestOfMany('provider_updated_at');
+    }
+
     public function hooks(): HasMany
     {
         return $this->hasMany(ContentHook::class)->orderBy('position');
