@@ -12,3 +12,6 @@ Route::livewire('/panel/content', 'pages::panel.content.index')
 
 Route::livewire('/panel/content/{content}/annotate', 'pages::panel.content.annotate')
     ->name('content.annotate');
+
+Route::livewire('/panel/intelligence', 'pages::panel.intelligence.index')
+    ->name('intelligence.index');

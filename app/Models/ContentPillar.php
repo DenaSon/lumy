@@ -13,12 +13,15 @@ class ContentPillar extends Model
     {
         return [
             'is_active' => 'boolean',
+            'sort_order' => 'integer',
         ];
     }
 
     public function topics(): HasMany
     {
-        return $this->hasMany(Topic::class)->orderBy('name');
+        return $this->hasMany(Topic::class)
+            ->orderBy('sort_order')
+            ->orderBy('name');
     }
 
     public function annotations(): HasMany
