@@ -31,11 +31,9 @@ class ZernioClientTest extends TestCase
 
         $this->assertSame('healthy', $response['status']);
 
-        Http::assertSent(fn (Request $request) =>
-            $request->method() === 'GET'
+        Http::assertSent(fn (Request $request) => $request->method() === 'GET'
             && $request->url() === 'https://zernio.com/api/v1/accounts/account_123/health'
-            && $request->hasHeader('Authorization', 'Bearer test-api-key')
-        );
+            && $request->hasHeader('Authorization', 'Bearer test-api-key'));
     }
 
     public function test_client_sends_external_post_sync_and_list_contracts(): void
@@ -52,18 +50,14 @@ class ZernioClientTest extends TestCase
         $client->syncExternalPosts('account_123');
         $client->listExternalPosts('account_123', 1, 100);
 
-        Http::assertSent(fn (Request $request) =>
-            $request->method() === 'POST'
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
             && $request->url() === 'https://zernio.com/api/v1/posts/sync-external'
-            && $request['accountId'] === 'account_123'
-        );
+            && $request['accountId'] === 'account_123');
 
-        Http::assertSent(fn (Request $request) =>
-            $request->method() === 'GET'
+        Http::assertSent(fn (Request $request) => $request->method() === 'GET'
             && str_starts_with($request->url(), 'https://zernio.com/api/v1/posts?')
             && str_contains($request->url(), 'source=external')
             && str_contains($request->url(), 'accountId=account_123')
-            && str_contains($request->url(), 'limit=100')
-        );
+            && str_contains($request->url(), 'limit=100'));
     }
 }
