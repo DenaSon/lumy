@@ -1,0 +1,69 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Integrations\Zernio\InstagramSyncService;
+use App\Models\DemographicSnapshot;
+use App\Models\SocialAccount;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
+
+class DemographicRankSemanticsTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('zernio.base_url', 'https://zernio.com/api/v1');
+        config()->set('zernio.api_key', 'test-api-key');
+    }
+
+    public function test_provider_array_order_is_not_persisted_as_rank(): void
+    {
+        $account = SocialAccount::create([
+            'platform' => 'instagram',
+            'provider' => 'zernio',
+            'username' => 'lumixo.dev',
+            'provider_account_id' => 'account_123',
+        ]);
+
+        Http::fake([
+            'https://zernio.com/api/v1/analytics/instagram/demographics*' => Http::response([
+                'success' => true,
+                'accountId' => 'account_123',
+                'metric' => 'follower_demographics',
+                'timeframe' => 'this_month',
+                'demographics' => [
+                    'city' => [
+                        ['dimension' => 'Bandar-e Anzali', 'value' => 131],
+                        ['dimension' => 'Tabriz', 'value' => 2243],
+                        ['dimension' => 'Tehran', 'value' => 1700, 'rank' => 7],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $result = app(InstagramSyncService::class)->syncDemographics($account);
+
+        $rows = DemographicSnapshot::query()
+            ->where('dimension_type', 'city')
+            ->orderBy('provider_position')
+            ->get();
+
+        $this->assertSame(3, $result['created_count']);
+        $this->assertSame(0, $result['failed_count']);
+        $this->assertSame([1, 2, 3], $rows->pluck('provider_position')->all());
+        $this->assertSame([null, null, 7], $rows->pluck('rank')->all());
+        $this->assertSame(
+            ['Tabriz', 'Tehran', 'Bandar-e Anzali'],
+            DemographicSnapshot::query()
+                ->where('dimension_type', 'city')
+                ->highestValueFirst()
+                ->pluck('dimension')
+                ->all(),
+        );
+    }
+}
