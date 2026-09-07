@@ -4,8 +4,6 @@ use App\Integrations\Zernio\InstagramSyncService;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Artisan;
-use InvalidArgumentException;
-use RuntimeException;
 
 Artisan::command('lumy:sync-instagram {--only= : Run one stage: contents, content-analytics, account-insights, demographics, followers} {--from= : UTC start date (YYYY-MM-DD) for date-aware stages} {--to= : UTC end date (YYYY-MM-DD) for date-aware stages}', function () {
     $stageMap = [
