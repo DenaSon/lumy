@@ -2,7 +2,6 @@
 
 namespace App\ContentIntelligence;
 
-use App\Analytics\ContentDerivedMetrics;
 use App\Models\Content;
 use App\Models\ContentHook;
 use App\Models\SocialAccount;
