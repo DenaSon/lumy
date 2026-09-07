@@ -196,12 +196,15 @@ class InstagramSyncService
                         continue;
                     }
 
+                    $providerRank = $item['rank'] ?? null;
+
                     $account->demographicSnapshots()->create([
                         'captured_at' => $capturedAt,
                         'dimension_type' => $dimensionType,
                         'dimension' => (string) $item['dimension'],
                         'value' => (int) $item['value'],
-                        'rank' => $index + 1,
+                        'rank' => is_numeric($providerRank) ? (int) $providerRank : null,
+                        'provider_position' => $index + 1,
                         'is_partial' => in_array($dimensionType, ['city', 'country'], true),
                         'provider_payload' => $item,
                     ]);
