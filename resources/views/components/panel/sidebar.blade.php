@@ -64,7 +64,7 @@
                 <a
                     wire:navigate
                     wire:current="menu-active"
-                    href="{{ route('intelligence.index') }}"
+                    href="{{ route('intelligence.analysis') }}"
                 >
                     <x-icon name="o-light-bulb" class="w-5 h-5" />
                     <span>هوشمندی</span>
