@@ -290,31 +290,32 @@ class InstagramSyncService
 
     private function persistExternalPost(SocialAccount $account, array $post): string
     {
-        $platformPostId = $this->platformPostId($post);
+        $platformRow = $this->instagramExternalPlatformRow($post);
+        $platformPostId = $this->platformPostId($post, $platformRow);
 
         if ($platformPostId === null) {
             throw new UnexpectedValueException('External post is missing platformPostId.');
         }
 
-        return DB::transaction(function () use ($account, $post, $platformPostId) {
+        return DB::transaction(function () use ($account, $post, $platformRow, $platformPostId) {
             $content = Content::firstOrNew([
                 'social_account_id' => $account->id,
                 'platform_post_id' => $platformPostId,
             ]);
             $created = ! $content->exists;
-            $incomingStatus = $this->mapAnalyticsStatus(data_get($post, 'syncStatus'));
+            $incomingStatus = $this->mapAnalyticsStatus($platformRow['syncStatus'] ?? $post['syncStatus'] ?? null);
 
             $content->fill([
                 'provider_post_id' => $post['_id'] ?? $post['postId'] ?? $post['id'] ?? null,
-                'permalink' => $post['platformPostUrl'] ?? $post['permalink'] ?? $post['url'] ?? null,
+                'permalink' => $platformRow['platformPostUrl'] ?? $post['platformPostUrl'] ?? $post['permalink'] ?? $post['url'] ?? null,
                 'media_product_type' => $post['mediaProductType'] ?? null,
                 'content_type' => $this->contentType($post),
                 'caption' => $post['content'] ?? $post['caption'] ?? null,
-                'published_at' => $post['publishedAt'] ?? $post['timestamp'] ?? $post['createdAt'] ?? null,
+                'published_at' => $platformRow['publishedAt'] ?? $post['publishedAt'] ?? $post['scheduledFor'] ?? $post['timestamp'] ?? $post['createdAt'] ?? null,
                 'analytics_status' => $incomingStatus ?? ($content->analytics_status ?: 'pending'),
-                'platform_status' => $post['status'] ?? null,
+                'platform_status' => $platformRow['status'] ?? $post['status'] ?? null,
                 'provider_updated_at' => $post['updatedAt'] ?? null,
-                'provider_payload' => $post,
+                'provider_payload' => $this->sanitizeExternalPostPayload($post),
             ]);
             $content->save();
 
@@ -326,16 +327,16 @@ class InstagramSyncService
 
     private function persistAnalyticsRow(SocialAccount $account, array $row): bool
     {
-        $platformRow = $this->instagramPlatformRow($row);
+        $platformRow = $this->instagramAnalyticsPlatformRow($row);
         $platformPostId = $platformRow['platformPostId'] ?? $row['platformPostId'] ?? null;
-        $providerPostId = $row['postId'] ?? null;
+        $providerPostId = $row['_id'] ?? $row['postId'] ?? $row['id'] ?? null;
 
         $contentQuery = $account->contents();
         $content = $platformPostId
-            ? (clone $contentQuery)->where('platform_post_id', $platformPostId)->first()
+            ? (clone $contentQuery)->where('platform_post_id', (string) $platformPostId)->first()
             : null;
         $content ??= $providerPostId
-            ? (clone $contentQuery)->where('provider_post_id', $providerPostId)->first()
+            ? (clone $contentQuery)->where('provider_post_id', (string) $providerPostId)->first()
             : null;
 
         if ($content === null) {
@@ -354,7 +355,7 @@ class InstagramSyncService
             return false;
         }
 
-        $providerUpdatedAt = CarbonImmutable::parse($analytics['lastUpdated']);
+        $providerUpdatedAt = CarbonImmutable::parse($analytics['lastUpdated'], 'UTC');
 
         if ($content->metricSnapshots()->where('provider_updated_at', $providerUpdatedAt)->exists()) {
             return false;
@@ -435,7 +436,7 @@ class InstagramSyncService
             'platform_account_id' => $health['platformAccountId'] ?? null,
             'provider_profile_id' => config('zernio.profile_id') ?: null,
             'status' => $health['status'] ?? 'active',
-            'token_expires_at' => $health['tokenExpiresAt'] ?? null,
+            'token_expires_at' => data_get($health, 'tokenStatus.expiresAt') ?? $health['tokenExpiresAt'] ?? null,
             'provider_payload' => $health,
         ]);
 
@@ -506,9 +507,11 @@ class InstagramSyncService
         return array_is_list($payload) ? $payload : [];
     }
 
-    private function platformPostId(array $post): ?string
+    private function platformPostId(array $post, array $platformRow = []): ?string
     {
-        $value = $post['platformPostId'] ?? data_get($post, 'platform.platformPostId');
+        $value = $platformRow['platformPostId']
+            ?? $post['platformPostId']
+            ?? data_get($post, 'platform.platformPostId');
 
         return is_scalar($value) && (string) $value !== '' ? (string) $value : null;
     }
@@ -536,21 +539,44 @@ class InstagramSyncService
         return $product !== '' ? strtolower($product) : null;
     }
 
-    private function instagramPlatformRow(array $row): array
+    private function instagramExternalPlatformRow(array $post): array
     {
-        $platformRows = $row['platformAnalytics'] ?? [];
+        return $this->instagramRowFrom($post['platforms'] ?? []);
+    }
 
-        if (! is_array($platformRows)) {
-            return [];
-        }
+    private function instagramAnalyticsPlatformRow(array $row): array
+    {
+        foreach (['platforms', 'platformAnalytics'] as $key) {
+            $platformRow = $this->instagramRowFrom($row[$key] ?? []);
 
-        foreach ($platformRows as $platformRow) {
-            if (is_array($platformRow) && ($platformRow['platform'] ?? null) === 'instagram') {
+            if ($platformRow !== []) {
                 return $platformRow;
             }
         }
 
         return [];
+    }
+
+    private function instagramRowFrom(mixed $rows): array
+    {
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        foreach ($rows as $row) {
+            if (is_array($row) && ($row['platform'] ?? null) === 'instagram') {
+                return $row;
+            }
+        }
+
+        return [];
+    }
+
+    private function sanitizeExternalPostPayload(array $post): array
+    {
+        unset($post['userId']);
+
+        return $post;
     }
 
     private function mapAnalyticsStatus(mixed $status): ?string
