@@ -28,6 +28,9 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Prepare Laravel runtime directories
+        run: mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
