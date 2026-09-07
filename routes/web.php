@@ -15,3 +15,6 @@ Route::livewire('/panel/content/{content}/annotate', 'pages::panel.content.annot
 
 Route::livewire('/panel/intelligence', 'pages::panel.intelligence.index')
     ->name('intelligence.index');
+
+Route::livewire('/panel/intelligence/analysis', 'pages::panel.intelligence.analysis')
+    ->name('intelligence.analysis');
