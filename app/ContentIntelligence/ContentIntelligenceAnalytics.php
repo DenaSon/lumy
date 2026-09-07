@@ -15,7 +15,7 @@ use InvalidArgumentException;
  *
  * Each content may contribute at most once to each primary-attribution dimension.
  * Metrics are calculated from that content's single latest factual snapshot.
- * No aggregate or derived value from this class is persisted.
+ * No aggregate, comparison, or derived value from this class is persisted.
  */
 final class ContentIntelligenceAnalytics
 {
@@ -64,7 +64,7 @@ final class ContentIntelligenceAnalytics
         $dimensions = [];
 
         foreach (self::DIMENSIONS as $dimension) {
-            $dimensions[$dimension] = $this->aggregateDimension($contents, $dimension);
+            $dimensions[$dimension] = $this->analyzeDimensionContents($contents, $dimension)['groups'];
         }
 
         return [
@@ -77,9 +77,26 @@ final class ContentIntelligenceAnalytics
     /** @return Collection<int, array<string, mixed>> */
     public function dimension(SocialAccount $account, string $dimension): Collection
     {
+        return $this->analyzeDimension($account, $dimension)['groups'];
+    }
+
+    /**
+     * Return one dimension with its inclusive overall baseline and group-vs-peer
+     * comparisons. The peer baseline excludes the current group, so a group is
+     * never compared partly against itself.
+     *
+     * @return array{
+     *     dimension: string,
+     *     attributed_sample_size: int,
+     *     baseline: array<string, array<string, mixed>>,
+     *     groups: Collection<int, array<string, mixed>>
+     * }
+     */
+    public function analyzeDimension(SocialAccount $account, string $dimension): array
+    {
         $this->assertDimension($dimension);
 
-        return $this->aggregateDimension($this->contents($account), $dimension);
+        return $this->analyzeDimensionContents($this->contents($account), $dimension);
     }
 
     /** @return EloquentCollection<int, Content> */
@@ -97,12 +114,18 @@ final class ContentIntelligenceAnalytics
 
     /**
      * @param  EloquentCollection<int, Content>  $contents
-     * @return Collection<int, array<string, mixed>>
+     * @return array{
+     *     dimension: string,
+     *     attributed_sample_size: int,
+     *     baseline: array<string, array<string, mixed>>,
+     *     groups: Collection<int, array<string, mixed>>
+     * }
      */
-    private function aggregateDimension(EloquentCollection $contents, string $dimension): Collection
+    private function analyzeDimensionContents(EloquentCollection $contents, string $dimension): array
     {
         $this->assertDimension($dimension);
         $buckets = [];
+        $attributedContents = collect();
 
         foreach ($contents as $content) {
             $attribution = $this->attribution($content, $dimension);
@@ -111,6 +134,7 @@ final class ContentIntelligenceAnalytics
                 continue;
             }
 
+            $attributedContents->push($content);
             $bucketKey = $attribution['key'];
             $buckets[$bucketKey] ??= [
                 'attribution' => $attribution,
@@ -119,30 +143,29 @@ final class ContentIntelligenceAnalytics
             $buckets[$bucketKey]['contents'][] = $content;
         }
 
-        return collect($buckets)
-            ->map(function (array $bucket) use ($dimension) {
+        $baseline = $this->summarizeMetrics($attributedContents);
+
+        $groups = collect($buckets)
+            ->map(function (array $bucket) use ($dimension, $attributedContents) {
                 /** @var Collection<int, Content> $bucketContents */
                 $bucketContents = collect($bucket['contents']);
+                $bucketContentIds = $bucketContents->pluck('id')->all();
+                $peerContents = $attributedContents
+                    ->reject(fn (Content $content) => in_array($content->id, $bucketContentIds, true))
+                    ->values();
                 $sampleSize = $bucketContents->count();
                 $analyticsSampleSize = $bucketContents
                     ->filter(fn (Content $content) => $content->latestMetricSnapshot !== null)
                     ->count();
-                $metrics = [];
+                $metrics = $this->summarizeMetrics($bucketContents);
+                $peerMetrics = $this->summarizeMetrics($peerContents);
+                $comparisons = [];
 
-                foreach (self::METRICS as $metric => $semantics) {
-                    $values = $bucketContents
-                        ->map(fn (Content $content) => $this->metricValue($content, $metric))
-                        ->filter(fn ($value) => $value !== null)
-                        ->map(fn ($value) => (float) $value)
-                        ->values();
-                    $metricSampleSize = $values->count();
-
-                    $metrics[$metric] = [
-                        'median' => $this->median($values),
-                        'sample_size' => $metricSampleSize,
-                        'sample_status' => $this->sampleStatus($metricSampleSize),
-                        ...$semantics,
-                    ];
+                foreach (self::METRICS as $metric => $_semantics) {
+                    $comparisons[$metric] = $this->compareMetric(
+                        $metrics[$metric],
+                        $peerMetrics[$metric],
+                    );
                 }
 
                 return [
@@ -153,7 +176,9 @@ final class ContentIntelligenceAnalytics
                     'sample_size' => $sampleSize,
                     'sample_status' => $this->sampleStatus($sampleSize),
                     'analytics_sample_size' => $analyticsSampleSize,
+                    'peer_sample_size' => $peerContents->count(),
                     'metrics' => $metrics,
+                    'comparisons' => $comparisons,
                 ];
             })
             ->sort(function (array $left, array $right) {
@@ -166,6 +191,79 @@ final class ContentIntelligenceAnalytics
                 return strcasecmp((string) $left['label'], (string) $right['label']);
             })
             ->values();
+
+        return [
+            'dimension' => $dimension,
+            'attributed_sample_size' => $attributedContents->count(),
+            'baseline' => $baseline,
+            'groups' => $groups,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, Content>  $contents
+     * @return array<string, array{median: float|null, sample_size: int, sample_status: string, kind: string, comparison_role: string}>
+     */
+    private function summarizeMetrics(Collection $contents): array
+    {
+        $metrics = [];
+
+        foreach (self::METRICS as $metric => $semantics) {
+            $values = $contents
+                ->map(fn (Content $content) => $this->metricValue($content, $metric))
+                ->filter(fn ($value) => $value !== null)
+                ->map(fn ($value) => (float) $value)
+                ->values();
+            $metricSampleSize = $values->count();
+
+            $metrics[$metric] = [
+                'median' => $this->median($values),
+                'sample_size' => $metricSampleSize,
+                'sample_status' => $this->sampleStatus($metricSampleSize),
+                ...$semantics,
+            ];
+        }
+
+        return $metrics;
+    }
+
+    /**
+     * @param  array{median: float|null, sample_size: int, sample_status: string, kind: string, comparison_role: string}  $group
+     * @param  array{median: float|null, sample_size: int, sample_status: string, kind: string, comparison_role: string}  $peer
+     * @return array{
+     *     peer_median: float|null,
+     *     peer_sample_size: int,
+     *     peer_sample_status: string,
+     *     delta: float|null,
+     *     relative_lift: float|null,
+     *     direction: string|null,
+     *     evidence_status: string
+     * }
+     */
+    private function compareMetric(array $group, array $peer): array
+    {
+        $groupMedian = $group['median'];
+        $peerMedian = $peer['median'];
+        $delta = $groupMedian !== null && $peerMedian !== null
+            ? $groupMedian - $peerMedian
+            : null;
+
+        return [
+            'peer_median' => $peerMedian,
+            'peer_sample_size' => $peer['sample_size'],
+            'peer_sample_status' => $peer['sample_status'],
+            'delta' => $delta,
+            'relative_lift' => $delta !== null && $peerMedian != 0.0
+                ? $delta / abs($peerMedian)
+                : null,
+            'direction' => $this->direction($delta),
+            'evidence_status' => $this->comparisonStatus(
+                $group['sample_size'],
+                $peer['sample_size'],
+                $groupMedian,
+                $peerMedian,
+            ),
+        ];
     }
 
     /** @return array{key: string, label: string, meta: array<string, mixed>}|null */
@@ -257,6 +355,32 @@ final class ContentIntelligenceAnalytics
         }
 
         return 'usable';
+    }
+
+    private function comparisonStatus(
+        int $groupSampleSize,
+        int $peerSampleSize,
+        ?float $groupMedian,
+        ?float $peerMedian,
+    ): string {
+        if ($groupMedian === null || $peerMedian === null) {
+            return 'insufficient';
+        }
+
+        return $this->sampleStatus(min($groupSampleSize, $peerSampleSize));
+    }
+
+    private function direction(?float $delta): ?string
+    {
+        if ($delta === null) {
+            return null;
+        }
+
+        if (abs($delta) < 0.000000000001) {
+            return 'same';
+        }
+
+        return $delta > 0 ? 'above' : 'below';
     }
 
     /** @param Collection<int, float> $values */

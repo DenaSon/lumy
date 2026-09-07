@@ -96,16 +96,34 @@ Behavior metrics such as Save Rate, Share Rate, High Intent Rate, Retention, and
 
 This classification does not itself imply statistical significance or causality.
 
+## Baselines and peer comparison
+
+`analyzeDimension()` adds two deterministic comparison contexts without persisting either one.
+
+The **overall baseline** is the median of every content attributed to that dimension. It includes the current group and is useful as a broad dimension-level reference.
+
+The **peer baseline** is calculated independently for each group and excludes every content in that group. Group comparisons use this peer baseline so a group is never compared partly against itself.
+
+For each metric the comparison reports:
+
+- peer median;
+- peer metric sample size and sample status;
+- absolute delta: `group median - peer median`;
+- relative lift: `delta / abs(peer median)` when the peer median is non-zero;
+- neutral direction: `above`, `below`, or `same`;
+- evidence status based on the weaker of the group and peer metric samples.
+
+A missing group or peer median produces no delta or direction. A peer median of factual zero keeps the absolute delta but makes relative lift `NULL` because a percentage lift from zero is undefined.
+
 ## Explicit non-goals of this layer
 
-This layer does not yet:
+This layer still does not:
 
-- compare a group with an overall baseline;
-- calculate lift or percentage-point deltas;
-- generate evidence-backed natural-language insights;
-- run significance tests;
-- control for content age or confounders;
+- generate natural-language claims;
+- claim statistical significance or causality;
+- control for content age, format, or other confounders;
+- treat lifetime Views or Reach as behavioral evidence;
 - assign a universal content score;
 - produce recommendations.
 
-Those belong to the subsequent evidence/baseline layer.
+Structured evidence candidates are produced by the separate `ContentIntelligenceEvidence` layer.
