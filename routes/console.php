@@ -1,30 +1,39 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
+use App\Integrations\Zernio\InstagramSyncService;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schedule;
+use Throwable;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+Artisan::command('lumy:sync-instagram {--from=} {--to=}', function () {
+    try {
+        $summary = app(InstagramSyncService::class)->sync(
+            $this->option('from'),
+            $this->option('to'),
+        );
+    } catch (Throwable $exception) {
+        $this->error($exception->getMessage());
 
-Schedule::command('feeds:collect')->everyFiveMinutes()
-    ->after(function () {
-        try {
-            Artisan::call('topics:rebuild');
-            Log::info('topics:rebuild completed successfully');
+        return 1;
+    }
 
-            Artisan::call('clusters:rebuild');
-            Log::info('clusters:rebuild completed successfully');
+    $rows = [];
 
-            Artisan::call('trends:rebuild');
-            Log::info('trends:rebuild completed successfully');
+    foreach (['contents', 'content_analytics', 'account_analytics', 'demographics', 'followers'] as $key) {
+        $result = $summary[$key] ?? [];
+        $rows[] = [
+            $key,
+            $result['discovered_count'] ?? 0,
+            $result['created_count'] ?? 0,
+            $result['updated_count'] ?? 0,
+            $result['failed_count'] ?? 0,
+        ];
+    }
 
-            Artisan::call('trends:snapshot');
-            Log::info('All tasks completed successfully');
+    $this->info('Instagram sync completed.');
+    $this->table(
+        ['Sync', 'Discovered', 'Created', 'Updated', 'Failed'],
+        $rows,
+    );
 
-        } catch (Exception $e) {
-            Log::error('Task failed: '.$e->getMessage());
-        }
-    });
+    return 0;
+})->purpose('Synchronize Lumy with the configured Instagram account through Zernio.');
