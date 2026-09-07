@@ -1,119 +1,54 @@
-# xDeploy
+# Lumy
 
-> Modern Deployment Management Platform for Linux Servers
+> Content Intelligence for Lumixo
 
-xDeploy is a modular deployment management platform that simplifies installing, managing and monitoring services on Linux servers.
+Lumy is a data-driven Content Intelligence System that turns Lumixo's historical content performance and audience behavior into better future content decisions.
 
-The MVP focuses on VPN-related modules while the architecture is designed to support any Linux service in the future.
+## Purpose
 
----
+Lumy combines Instagram analytics with structured content annotations such as Hooks, Topics, Pillars, CTAs, and Content Goals.
 
-## Features (MVP)
+The system is designed to progress from:
 
-- Modular architecture
-- SSH-based deployment
-- Module lifecycle management
-- Server monitoring dashboard
-- Deployment Engine
-- Single VPS support
-
----
+`Data → Analytics → Patterns → Decisions → AI-assisted Strategy`
 
 ## Technology Stack
 
 - Laravel
 - Livewire
-- Mary UI
+- Blade
+- MaryUI
+- Tailwind CSS
 - DaisyUI
-- MySQL
-- phpseclib
-
----
-
-## Project Structure
-
-```text
-app/
-
-Core/
-Domain/
-Infrastructure/
-Support/
-
-docs/
-```
-
----
+- Laravel Queue / Scheduler
+- Zernio API
 
 ## Documentation
 
-Project documentation is available under the `docs/` directory.
-
-- Product Vision
-- Architecture
-- Domain Boundaries
-- Database Design
-- Sprint Planning
-
----
+- [Product Vision & Roadmap](docs/product-vision.md)
 
 ## Development
-
-Clone the project:
-
-```bash
-git clone https://github.com/<your-org>/xdeploy.git
-```
-
-Install dependencies:
 
 ```bash
 composer install
 npm install
-```
-
-Create environment file:
-
-```bash
 cp .env.example .env
-```
-
-Generate application key:
-
-```bash
 php artisan key:generate
-```
-
-Run migrations:
-
-```bash
 php artisan migrate
+composer dev
 ```
 
-Start the development server:
+## Current Milestone
 
-```bash
-php artisan serve
-npm run dev
-```
+### Phase 1 — Foundation & Observatory
 
----
+- Clean Lumy foundation
+- Define database schema
+- Integrate Zernio
+- Import historical content
+- Store analytics snapshots
+- Build the initial content catalog and dashboard
 
-## Roadmap
+## Upstream
 
-Current milestone:
-
-- ✅ Sprint 01 — Foundation
-
-Next milestone:
-
-- Deployment Engine
-- Module System
-- Dashboard
-- MVP Release
-
----
-
-## License
-
-This project is licensed under the MIT License.
+Lumy was bootstrapped from the Coreflare/xDeploy foundation. xDeploy remains the upstream foundation; Lumy is maintained as an independent product repository.

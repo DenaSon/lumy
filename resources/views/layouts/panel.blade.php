@@ -15,7 +15,7 @@
     >
 
     <title>
-        {{ $title ?? 'TIP' }}
+        {{ $title ?? 'Lumy' }}
     </title>
 
     @vite([

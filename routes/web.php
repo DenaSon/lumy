@@ -2,21 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('panel')
-    ->as('panel.')
-    ->group(function () {});
+Route::redirect('/', '/panel')->name('home');
 
-Route::prefix('core')
-    ->as('core.')
-    ->group(function () {
-
-        Route::livewire('/dashboard', 'pages::core.dashboard.index')
-            ->name('dashboard.index');
-
-    });
-
-Route::prefix('panel')
-    ->as('panel.')
-    ->group(function () {});
-
-require __DIR__.'/settings.php';
+Route::livewire('/panel', 'pages::panel.index')
+    ->name('dashboard');
