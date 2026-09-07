@@ -9,7 +9,7 @@ Artisan::command('lumy:sync-instagram {--from=} {--to=}', function () {
             $this->option('from'),
             $this->option('to'),
         );
-    } catch (\Throwable $exception) {
+    } catch (Throwable $exception) {
         $this->error($exception->getMessage());
 
         return 1;
