@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Domains\Topic\Models\User;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
