@@ -78,6 +78,7 @@ new #[Layout('layouts.panel')] class extends Component
                 'socialAccount:id,username',
                 'coverMedia',
                 'latestMetricSnapshot',
+                'annotation:id,content_id,annotated_at',
             ])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
@@ -108,6 +109,7 @@ new #[Layout('layouts.panel')] class extends Component
             'total' => Content::query()->count(),
             'available' => Content::query()->where('analytics_status', 'available')->count(),
             'pending' => Content::query()->where('analytics_status', 'pending')->count(),
+            'annotated' => Content::query()->has('annotation')->count(),
             'reels' => Content::query()->where('content_type', 'reel')->count(),
             'carousels' => Content::query()->where('content_type', 'carousel')->count(),
         ];
@@ -149,7 +151,7 @@ new #[Layout('layouts.panel')] class extends Component
 
     @php($summary = $this->summary)
 
-    <section class="grid grid-cols-2 gap-3 md:grid-cols-5">
+    <section class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
             <div class="text-xs text-base-content/55">کل محتوا</div>
             <div class="mt-1 text-2xl font-black">{{ number_format($summary['total']) }}</div>
@@ -161,6 +163,10 @@ new #[Layout('layouts.panel')] class extends Component
         <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
             <div class="text-xs text-base-content/55">در انتظار Analytics</div>
             <div class="mt-1 text-2xl font-black">{{ number_format($summary['pending']) }}</div>
+        </div>
+        <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
+            <div class="text-xs text-base-content/55">Annotation شده</div>
+            <div class="mt-1 text-2xl font-black">{{ number_format($summary['annotated']) }}</div>
         </div>
         <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
             <div class="text-xs text-base-content/55">Reel</div>
@@ -248,7 +254,7 @@ new #[Layout('layouts.panel')] class extends Component
             </div>
         @else
             <div class="overflow-x-auto">
-                <table class="table table-zebra min-w-[1180px]">
+                <table class="table table-zebra min-w-[1320px]">
                     <thead>
                     <tr class="text-xs uppercase text-base-content/55">
                         <th>محتوا</th>
@@ -261,6 +267,7 @@ new #[Layout('layouts.panel')] class extends Component
                         <th>Retention</th>
                         <th>Skip Rate</th>
                         <th>Analytics</th>
+                        <th>Intelligence</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -330,6 +337,18 @@ new #[Layout('layouts.panel')] class extends Component
                                 <span class="badge {{ $statusClass }} badge-sm">
                                     {{ $content->analytics_status }}
                                 </span>
+                            </td>
+                            <td>
+                                <div class="flex min-w-32 flex-col items-start gap-2">
+                                    @if($content->annotation?->annotated_at)
+                                        <span class="badge badge-success badge-sm">Annotated</span>
+                                    @else
+                                        <span class="badge badge-ghost badge-sm">Not annotated</span>
+                                    @endif
+                                    <a wire:navigate href="{{ route('content.annotate', $content) }}" class="btn btn-primary btn-xs">
+                                        {{ $content->annotation ? 'ویرایش' : 'Annotate' }}
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     @endforeach
