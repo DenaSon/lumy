@@ -45,7 +45,7 @@ class InstagramSyncCommandTest extends TestCase
                 ->withArgs(fn (SocialAccount $received, string $from, string $to) => $received->is($account)
                     && $from === '2026-09-01'
                     && $to === '2026-09-07')
-                ->andReturn($this->result(discovered: 10, created: 3, updated: 7));
+                ->andReturn($this->syncResult(discovered: 10, created: 3, updated: 7));
         });
 
         $this->artisan('lumy:sync-instagram', [
@@ -100,7 +100,7 @@ class InstagramSyncCommandTest extends TestCase
                 ->once()
                 ->withArgs(fn (SocialAccount $received) => $received->is($account))
                 ->andReturn([
-                    ...$this->result(discovered: 3, created: 2),
+                    ...$this->syncResult(discovered: 3, created: 2),
                     'failed_count' => 1,
                     'errors' => ['One demographic row failed.'],
                 ]);
@@ -126,15 +126,15 @@ class InstagramSyncCommandTest extends TestCase
         return [
             'social_account_id' => 1,
             'provider_account_id' => 'account_command',
-            'contents' => $this->result(),
-            'content_analytics' => $this->result(),
-            'account_analytics' => $this->result(),
-            'demographics' => $this->result(),
-            'followers' => $this->result(),
+            'contents' => $this->syncResult(),
+            'content_analytics' => $this->syncResult(),
+            'account_analytics' => $this->syncResult(),
+            'demographics' => $this->syncResult(),
+            'followers' => $this->syncResult(),
         ];
     }
 
-    private function result(int $discovered = 0, int $created = 0, int $updated = 0): array
+    private function syncResult(int $discovered = 0, int $created = 0, int $updated = 0): array
     {
         return [
             'discovered_count' => $discovered,
