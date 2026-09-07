@@ -26,7 +26,10 @@ return new class extends Migration
                 'dimension_type',
                 'dimension',
             ], 'demographic_snapshots_unique_dimension');
-            $table->index(['social_account_id', 'dimension_type', 'captured_at']);
+            $table->index(
+                ['social_account_id', 'dimension_type', 'captured_at'],
+                'demographics_account_dimension_captured_idx',
+            );
         });
     }
 
