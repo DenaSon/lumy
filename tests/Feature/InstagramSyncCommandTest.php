@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Integrations\Zernio\InstagramSyncService;
 use App\Models\SocialAccount;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -17,6 +18,13 @@ class InstagramSyncCommandTest extends TestCase
         parent::setUp();
 
         config()->set('zernio.account_id', 'account_command');
+    }
+
+    protected function tearDown(): void
+    {
+        CarbonImmutable::setTestNow();
+
+        parent::tearDown();
     }
 
     public function test_full_sync_remains_the_default_when_only_is_not_supplied(): void
@@ -109,6 +117,57 @@ class InstagramSyncCommandTest extends TestCase
         $this->artisan('lumy:sync-instagram', [
             '--only' => 'demographics',
         ])->assertExitCode(1);
+    }
+
+    public function test_incremental_sync_refreshes_metadata_and_recent_analytics_only(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-07 12:00:00', 'UTC'));
+        $account = $this->account();
+
+        $this->mock(InstagramSyncService::class, function (MockInterface $mock) use ($account) {
+            $mock->shouldNotReceive('sync');
+            $mock->shouldReceive('syncContents')
+                ->once()
+                ->withArgs(fn (SocialAccount $received) => $received->is($account))
+                ->andReturn($this->syncResult(discovered: 111, updated: 111));
+            $mock->shouldReceive('syncContentAnalytics')
+                ->once()
+                ->withArgs(fn (SocialAccount $received, string $from, string $to) => $received->is($account)
+                    && $from === '2026-08-08'
+                    && $to === '2026-09-07')
+                ->andReturn($this->syncResult(discovered: 20, created: 2, updated: 18));
+        });
+
+        $this->artisan('lumy:sync-instagram-incremental')
+            ->assertExitCode(0);
+
+        $this->assertNotNull($account->fresh()->last_synced_at);
+    }
+
+    public function test_incremental_sync_validates_rolling_window(): void
+    {
+        $this->account();
+
+        $this->mock(InstagramSyncService::class, function (MockInterface $mock) {
+            $mock->shouldNotReceive('syncContents');
+            $mock->shouldNotReceive('syncContentAnalytics');
+        });
+
+        $this->artisan('lumy:sync-instagram-incremental', ['--days' => 0])
+            ->assertExitCode(1);
+
+        $this->artisan('lumy:sync-instagram-incremental', ['--days' => 91])
+            ->assertExitCode(1);
+    }
+
+    public function test_local_scheduler_registers_incremental_and_daily_refreshes(): void
+    {
+        $this->artisan('schedule:list')
+            ->expectsOutputToContain('lumy:sync-instagram-incremental')
+            ->expectsOutputToContain('--only=account-insights')
+            ->expectsOutputToContain('--only=demographics')
+            ->expectsOutputToContain('--only=followers')
+            ->assertExitCode(0);
     }
 
     private function account(): SocialAccount
