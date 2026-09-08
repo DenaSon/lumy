@@ -30,6 +30,7 @@ class DashboardTest extends TestCase
             ->assertSee('هوشمندی')
             ->assertSee('تحلیل')
             ->assertSee('تنظیمات')
+            ->assertSee('wire:navigate.hover', false)
             ->assertSee('href="'.route('dashboard').'"', false)
             ->assertSee('href="'.route('content.index').'"', false)
             ->assertSee('href="'.route('intelligence.analysis').'"', false)
