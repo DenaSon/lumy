@@ -85,8 +85,7 @@ class ContentIntelligenceSetupTest extends TestCase
         $this->get(route('intelligence.index'))
             ->assertOk()
             ->assertSee('Taxonomy و کیفیت Annotation')
-            ->assertSee('Annotation Coverage')
-            ->assertSee('wire:sort="reorderTopic"', false);
+            ->assertSee('Annotation Coverage');
 
         Livewire::test('pages::panel.intelligence.index')
             ->set('pillarName', 'DevOps')
@@ -175,6 +174,11 @@ class ContentIntelligenceSetupTest extends TestCase
             'sort_order' => 30,
             'is_active' => true,
         ]);
+
+        $this->get(route('intelligence.index'))
+            ->assertOk()
+            ->assertSee('wire:sort="reorderTopic"', false)
+            ->assertSee('wire:sort:item="'.$first->id.'"', false);
 
         Livewire::test('pages::panel.intelligence.index')
             ->call('reorderTopic', $third->id, 0)
