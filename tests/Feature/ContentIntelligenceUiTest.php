@@ -14,7 +14,7 @@ class ContentIntelligenceUiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_analysis_workspace_renders_baselines_groups_and_evidence(): void
+    public function test_analysis_workspace_defers_core_and_evidence_without_changing_final_content(): void
     {
         $account = $this->account();
         config(['zernio.account_id' => $account->provider_account_id]);
@@ -44,18 +44,24 @@ class ContentIntelligenceUiTest extends TestCase
         $this->get(route('intelligence.analysis'))
             ->assertOk()
             ->assertSee('تحلیل الگوهای محتوا')
+            ->assertSee('Quick Hook')
+            ->assertSee('Format')
+            ->assertSee('در حال محاسبه Baseline و گروه‌ها...')
+            ->assertSee('در حال آماده‌سازی Evidence...')
+            ->assertDontSee('question');
+
+        Livewire::withoutLazyLoading()
+            ->test('pages::panel.intelligence.analysis')
             ->assertSee('Overall baseline')
             ->assertSee('Group vs peer baseline')
             ->assertSee('Evidence candidates')
             ->assertSee('Eligible Evidence')
             ->assertSee('Usable Evidence')
-            ->assertSee('Quick Hook')
-            ->assertSee('Format')
             ->assertSee('question')
             ->assertSee('result')
             ->assertSee('Usable')
             ->assertSee('Relative lift')
-            ->assertSee('wire:transition="analysis-overview"', false)
+            ->assertSee('wire:transition="analysis-baseline"', false)
             ->assertSee('wire:transition="analysis-evidence"', false)
             ->assertSee('چطور این صفحه را بخوانیم؟');
     }
@@ -65,7 +71,8 @@ class ContentIntelligenceUiTest extends TestCase
         $account = $this->account();
         config(['zernio.account_id' => $account->provider_account_id]);
 
-        Livewire::test('pages::panel.intelligence.analysis')
+        Livewire::withoutLazyLoading()
+            ->test('pages::panel.intelligence.analysis')
             ->set('dimension', 'format')
             ->assertSet('dimension', 'format')
             ->set('dimension', 'goal')
