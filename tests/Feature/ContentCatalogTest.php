@@ -16,6 +16,7 @@ class ContentCatalogTest extends TestCase
         $this->get(route('content.index'))
             ->assertOk()
             ->assertSee('کاتالوگ محتوا')
+            ->assertSee('ثبت سریع Hook')
             ->assertSee('محتوایی پیدا نشد');
     }
 
@@ -62,7 +63,8 @@ class ContentCatalogTest extends TestCase
             ->assertSee('2,000')
             ->assertSee('15.0%')
             ->assertSee('50.0%')
-            ->assertSee('40.0%');
+            ->assertSee('40.0%')
+            ->assertSee('افزودن Hook');
     }
 
     public function test_catalog_filters_searches_and_sorts_by_latest_metric(): void
@@ -93,6 +95,55 @@ class ContentCatalogTest extends TestCase
                 'Beta catalog item',
                 'Alpha catalog item',
             ]);
+    }
+
+    public function test_catalog_can_focus_on_contents_missing_a_primary_hook(): void
+    {
+        $account = $this->account();
+        $missing = $this->content($account, 'Missing primary hook', 'reel', 'available', '2026-09-07T08:00:00Z');
+        $complete = $this->content($account, 'Has primary hook', 'carousel', 'available', '2026-09-06T08:00:00Z');
+
+        $complete->hooks()->create([
+            'text' => 'A useful primary hook',
+            'type' => 'curiosity',
+            'source' => 'cover',
+            'position' => 0,
+            'is_primary' => true,
+        ]);
+
+        $this->get(route('content.index', ['intel' => 'missing_hook']))
+            ->assertOk()
+            ->assertSee('Missing primary hook')
+            ->assertDontSee('Has primary hook')
+            ->assertSee('هنوز Primary Hook ثبت نشده است.')
+            ->assertSee('href="'.route('content.hooks', ['content' => $missing->id]).'"', false);
+    }
+
+    public function test_catalog_surfaces_primary_hook_context_and_annotation_state(): void
+    {
+        $account = $this->account();
+        $content = $this->content($account, 'Polished catalog item', 'reel', 'available', '2026-09-07T08:00:00Z');
+
+        $content->annotation()->create([
+            'goal' => 'education',
+            'annotated_at' => '2026-09-07T12:00:00Z',
+        ]);
+        $content->hooks()->create([
+            'text' => 'Why does this Linux command matter?',
+            'type' => 'question',
+            'source' => 'video_overlay',
+            'position' => 0,
+            'is_primary' => true,
+        ]);
+
+        $this->get(route('content.index'))
+            ->assertOk()
+            ->assertSee('Polished catalog item')
+            ->assertSee('Why does this Linux command matter?')
+            ->assertSee('question · video_overlay')
+            ->assertSee('Annotated')
+            ->assertSee('ویرایش Hook')
+            ->assertSee('Full Annotation');
     }
 
     private function account(): SocialAccount
