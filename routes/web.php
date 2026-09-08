@@ -10,6 +10,9 @@ Route::livewire('/panel', 'pages::panel.index')
 Route::livewire('/panel/content', 'pages::panel.content.index')
     ->name('content.index');
 
+Route::livewire('/panel/content/hooks', 'pages::panel.content.hooks')
+    ->name('content.hooks');
+
 Route::livewire('/panel/content/{content}/annotate', 'pages::panel.content.annotate')
     ->name('content.annotate');
 
