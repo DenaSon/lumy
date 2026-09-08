@@ -65,7 +65,8 @@
             "@test"
         ],
         "test": [
-            "@php artisan optimize:clear --ansi",
+            "@php artisan config:clear --ansi",
+            "@php artisan view:clear --ansi",
             "@lint:check",
             "@php artisan test"
         ],
