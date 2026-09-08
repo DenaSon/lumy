@@ -14,7 +14,7 @@ class ContentIntelligenceUiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_analysis_workspace_renders_baselines_groups_and_evidence(): void
+    public function test_analysis_workspace_defers_core_and_evidence_without_changing_final_content(): void
     {
         $account = $this->account();
         config(['zernio.account_id' => $account->provider_account_id]);
@@ -44,20 +44,30 @@ class ContentIntelligenceUiTest extends TestCase
         $this->get(route('intelligence.analysis'))
             ->assertOk()
             ->assertSee('تحلیل الگوهای محتوا')
-            ->assertSee('Overall baseline')
-            ->assertSee('Group vs peer baseline')
-            ->assertSee('Evidence candidates')
-            ->assertSee('Eligible Evidence')
-            ->assertSee('Usable Evidence')
             ->assertSee('Quick Hook')
             ->assertSee('Format')
-            ->assertSee('question')
-            ->assertSee('result')
-            ->assertSee('Usable')
-            ->assertSee('Relative lift')
-            ->assertSee('wire:transition="analysis-overview"', false)
-            ->assertSee('wire:transition="analysis-evidence"', false)
-            ->assertSee('چطور این صفحه را بخوانیم؟');
+            ->assertSee('در حال محاسبه Baseline و گروه‌ها...')
+            ->assertSee('در حال آماده‌سازی Evidence...')
+            ->assertDontSee('question');
+
+        $component = Livewire::test('pages::panel.intelligence.analysis');
+        $component->instance()->renderIsland('analysis-core', mount: true);
+        $component->instance()->renderIsland('analysis-evidence', mount: true);
+        $loaded = implode("\n", $component->instance()->getRenderedIslandFragments());
+
+        $this->assertStringContainsString('Overall baseline', $loaded);
+        $this->assertStringContainsString('Group vs peer baseline', $loaded);
+        $this->assertStringContainsString('Evidence candidates', $loaded);
+        $this->assertStringContainsString('Eligible Evidence', $loaded);
+        $this->assertStringContainsString('Usable Evidence', $loaded);
+        $this->assertStringContainsString('question', $loaded);
+        $this->assertStringContainsString('result', $loaded);
+        $this->assertStringContainsString('Usable', $loaded);
+        $this->assertStringContainsString('Relative lift', $loaded);
+        $this->assertStringContainsString('wire:transition="analysis-baseline"', $loaded);
+        $this->assertStringContainsString('wire:transition="analysis-evidence"', $loaded);
+
+        $component->assertSee('چطور این صفحه را بخوانیم؟');
     }
 
     public function test_dimension_and_evidence_filters_validate_their_url_state(): void

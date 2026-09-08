@@ -287,11 +287,6 @@ new #[Layout('layouts.panel')] class extends Component
             description="بعد از sync شدن Social Account، Content Intelligence در این بخش فعال می‌شود."
         />
     @else
-        @php($analysis = $this->analysis)
-        @php($baseline = $analysis['baseline'])
-        @php($groups = $analysis['groups'])
-        @php($evidenceCounts = $this->evidenceCounts())
-
         <section class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
             <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -318,210 +313,303 @@ new #[Layout('layouts.panel')] class extends Component
                 </div>
             </div>
         </section>
+    @endif
 
-        <section wire:transition="analysis-overview" class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
-                <div class="text-xs text-base-content/50">Attributed Content</div>
-                <div class="mt-1 text-2xl font-black">{{ number_format($analysis['attributed_sample_size']) }}</div>
-                <div class="mt-1 text-xs text-base-content/40">برای {{ $this->dimensionOptions()[$dimension] }}</div>
-            </div>
-            <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
-                <div class="text-xs text-base-content/50">Groups</div>
-                <div class="mt-1 text-2xl font-black">{{ number_format($groups->count()) }}</div>
-                <div class="mt-1 text-xs text-base-content/40">Primary attribution only</div>
-            </div>
-            <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
-                <div class="text-xs text-base-content/50">Eligible Evidence</div>
-                <div class="mt-1 text-2xl font-black">{{ number_format($evidenceCounts['eligible']) }}</div>
-                <div class="mt-1 text-xs text-base-content/40">sample کافی برای surfacing</div>
-            </div>
-            <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
-                <div class="text-xs text-base-content/50">Usable Evidence</div>
-                <div class="mt-1 text-2xl font-black">{{ number_format($evidenceCounts['usable']) }}</div>
-                <div class="mt-1 text-xs text-base-content/40">V1 sample threshold</div>
-            </div>
-        </section>
-
-        <section wire:transition="analysis-baseline" class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-base-content/40">Reference</p>
-                    <h2 class="mt-1 text-lg font-black">Overall baseline</h2>
-                    <p class="mt-1 text-sm text-base-content/55">Median همه‌ی محتوای attributed در همین dimension.</p>
-                </div>
-                <div class="badge badge-outline">n={{ number_format($analysis['attributed_sample_size']) }}</div>
-            </div>
-
-            <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                @foreach($this->primaryMetrics() as $metric)
-                    @php($item = $baseline[$metric])
-                    <div class="rounded-xl bg-base-200 p-4">
-                        <div class="flex items-center justify-between gap-2">
-                            <span class="text-xs text-base-content/55">{{ $this->metricLabels()[$metric] }}</span>
-                            <span class="badge badge-xs {{ $this->statusClass($item['sample_status']) }}">{{ $this->statusLabel($item['sample_status']) }}</span>
+    <section @class(['grid grid-cols-2 gap-3 lg:grid-cols-4', 'hidden' => $this->account === null])>
+        @island(name: 'analysis-core', defer: true, always: true)
+            @placeholder
+                <div class="contents" aria-busy="true">
+                    @for($i = 0; $i < 2; $i++)
+                        <div class="animate-pulse rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
+                            <div class="h-3 w-24 rounded bg-base-300"></div>
+                            <div class="mt-3 h-7 w-16 rounded bg-base-300"></div>
+                            <div class="mt-2 h-3 w-28 rounded bg-base-200"></div>
                         </div>
-                        <div class="mt-2 text-xl font-black">{{ $this->formatMetric($metric, $item['median']) }}</div>
-                        <div class="mt-1 text-[11px] text-base-content/40">metric n={{ $item['sample_size'] }}</div>
+                    @endfor
+                </div>
+            @endplaceholder
+
+            <div class="contents">
+                @if($this->account !== null)
+                    @php($analysis = $this->analysis)
+                    @php($groups = $analysis['groups'])
+
+                    <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
+                        <div class="text-xs text-base-content/50">Attributed Content</div>
+                        <div class="mt-1 text-2xl font-black">{{ number_format($analysis['attributed_sample_size']) }}</div>
+                        <div class="mt-1 text-xs text-base-content/40">برای {{ $this->dimensionOptions()[$dimension] }}</div>
                     </div>
-                @endforeach
+                    <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
+                        <div class="text-xs text-base-content/50">Groups</div>
+                        <div class="mt-1 text-2xl font-black">{{ number_format($groups->count()) }}</div>
+                        <div class="mt-1 text-xs text-base-content/40">Primary attribution only</div>
+                    </div>
+                @endif
             </div>
-        </section>
+        @endisland
 
-        <section wire:transition="analysis-groups" class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
-            <div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-base-content/40">Comparison</p>
-                    <h2 class="mt-1 text-lg font-black">Group vs peer baseline</h2>
-                    <p class="mt-1 max-w-3xl text-sm leading-6 text-base-content/55">
-                        هر گروه با بقیه‌ی گروه‌های همان dimension مقایسه می‌شود. Peer baseline گروه فعلی را از خودش حذف می‌کند.
-                    </p>
+        @island(name: 'analysis-evidence', defer: true, always: true)
+            @placeholder
+                <div class="contents" aria-busy="true">
+                    @for($i = 0; $i < 2; $i++)
+                        <div class="animate-pulse rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
+                            <div class="h-3 w-24 rounded bg-base-300"></div>
+                            <div class="mt-3 h-7 w-16 rounded bg-base-300"></div>
+                            <div class="mt-2 h-3 w-28 rounded bg-base-200"></div>
+                        </div>
+                    @endfor
                 </div>
-                <div class="text-xs text-base-content/45">Delta جهت عددی را نشان می‌دهد؛ نه خوب یا بد بودن آن.</div>
+            @endplaceholder
+
+            <div class="contents">
+                @if($this->account !== null)
+                    @php($evidenceCounts = $this->evidenceCounts())
+
+                    <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
+                        <div class="text-xs text-base-content/50">Eligible Evidence</div>
+                        <div class="mt-1 text-2xl font-black">{{ number_format($evidenceCounts['eligible']) }}</div>
+                        <div class="mt-1 text-xs text-base-content/40">sample کافی برای surfacing</div>
+                    </div>
+                    <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
+                        <div class="text-xs text-base-content/50">Usable Evidence</div>
+                        <div class="mt-1 text-2xl font-black">{{ number_format($evidenceCounts['usable']) }}</div>
+                        <div class="mt-1 text-xs text-base-content/40">V1 sample threshold</div>
+                    </div>
+                @endif
             </div>
+        @endisland
+    </section>
 
-            @if($groups->isEmpty())
-                <div class="mt-5 rounded-xl bg-base-200 p-8 text-center text-sm text-base-content/55">برای این dimension هنوز attribution کافی وجود ندارد.</div>
-            @else
-                <div class="mt-5 space-y-4">
-                    @foreach($groups as $group)
-                        <article class="rounded-2xl border border-base-300 p-4 lg:p-5" wire:key="intelligence-group-{{ $dimension }}-{{ $group['key'] }}">
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                <div>
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <h3 class="text-base font-black">{{ $group['label'] }}</h3>
-                                        <span class="badge badge-sm {{ $this->statusClass($group['sample_status']) }}">{{ $this->statusLabel($group['sample_status']) }}</span>
-                                    </div>
-                                    @if(($group['meta']['pillar_name'] ?? null) !== null)
-                                        <div class="mt-1 text-xs text-base-content/45">Pillar: {{ $group['meta']['pillar_name'] }}</div>
-                                    @endif
-                                </div>
-                                <div class="flex gap-2 text-xs">
-                                    <span class="rounded-lg bg-base-200 px-3 py-2 font-mono">group n={{ $group['sample_size'] }}</span>
-                                    <span class="rounded-lg bg-base-200 px-3 py-2 font-mono">analytics n={{ $group['analytics_sample_size'] }}</span>
-                                </div>
-                            </div>
-
-                            <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                                @foreach($this->primaryMetrics() as $metric)
-                                    @php($metricRow = $group['metrics'][$metric])
-                                    @php($comparison = $group['comparisons'][$metric])
-                                    <div class="rounded-xl bg-base-200 p-3">
-                                        <div class="flex items-start justify-between gap-2">
-                                            <span class="text-xs font-semibold text-base-content/55">{{ $this->metricLabels()[$metric] }}</span>
-                                            <span class="badge badge-xs {{ $this->statusClass($comparison['evidence_status']) }}">{{ $this->statusLabel($comparison['evidence_status']) }}</span>
-                                        </div>
-                                        <div class="mt-3 flex items-end justify-between gap-3">
-                                            <div>
-                                                <div class="text-[10px] text-base-content/40">Group</div>
-                                                <div class="font-mono text-lg font-black">{{ $this->formatMetric($metric, $metricRow['median']) }}</div>
-                                            </div>
-                                            <div class="text-left">
-                                                <div class="text-[10px] text-base-content/40">Peers</div>
-                                                <div class="font-mono text-sm font-bold">{{ $this->formatMetric($metric, $comparison['peer_median']) }}</div>
-                                            </div>
-                                        </div>
-                                        <div class="mt-3 flex items-center justify-between gap-2 border-t border-base-300 pt-2 text-[11px]">
-                                            <span class="font-mono font-semibold">Δ {{ $this->formatDelta($metric, $comparison['delta']) }}</span>
-                                            <span class="text-base-content/45">n={{ $metricRow['sample_size'] }}/{{ $comparison['peer_sample_size'] }}</span>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </article>
-                    @endforeach
+    @island(name: 'analysis-core', defer: true, always: true)
+        @placeholder
+            <div @class(['space-y-6', 'hidden' => $this->account === null]) aria-busy="true">
+                <div class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+                    <div class="flex items-center justify-between gap-3 text-xs text-base-content/45">
+                        <span>در حال محاسبه Baseline و گروه‌ها...</span>
+                        <span class="loading loading-dots loading-sm"></span>
+                    </div>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                        @for($i = 0; $i < 5; $i++)
+                            <div class="h-24 animate-pulse rounded-xl bg-base-200"></div>
+                        @endfor
+                    </div>
                 </div>
+                <div class="h-72 animate-pulse rounded-2xl bg-base-200/70"></div>
+            </div>
+        @endplaceholder
+
+        <div class="space-y-6">
+            @if($this->account !== null)
+                @php($analysis = $this->analysis)
+                @php($baseline = $analysis['baseline'])
+                @php($groups = $analysis['groups'])
+
+                <section wire:transition="analysis-baseline" class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-base-content/40">Reference</p>
+                            <h2 class="mt-1 text-lg font-black">Overall baseline</h2>
+                            <p class="mt-1 text-sm text-base-content/55">Median همه‌ی محتوای attributed در همین dimension.</p>
+                        </div>
+                        <div class="badge badge-outline">n={{ number_format($analysis['attributed_sample_size']) }}</div>
+                    </div>
+
+                    <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                        @foreach($this->primaryMetrics() as $metric)
+                            @php($item = $baseline[$metric])
+                            <div class="rounded-xl bg-base-200 p-4">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-xs text-base-content/55">{{ $this->metricLabels()[$metric] }}</span>
+                                    <span class="badge badge-xs {{ $this->statusClass($item['sample_status']) }}">{{ $this->statusLabel($item['sample_status']) }}</span>
+                                </div>
+                                <div class="mt-2 text-xl font-black">{{ $this->formatMetric($metric, $item['median']) }}</div>
+                                <div class="mt-1 text-[11px] text-base-content/40">metric n={{ $item['sample_size'] }}</div>
+                            </div>
+                        @endforeach
+                    </div>
+                </section>
+
+                <section wire:transition="analysis-groups" class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+                    <div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-base-content/40">Comparison</p>
+                            <h2 class="mt-1 text-lg font-black">Group vs peer baseline</h2>
+                            <p class="mt-1 max-w-3xl text-sm leading-6 text-base-content/55">
+                                هر گروه با بقیه‌ی گروه‌های همان dimension مقایسه می‌شود. Peer baseline گروه فعلی را از خودش حذف می‌کند.
+                            </p>
+                        </div>
+                        <div class="text-xs text-base-content/45">Delta جهت عددی را نشان می‌دهد؛ نه خوب یا بد بودن آن.</div>
+                    </div>
+
+                    @if($groups->isEmpty())
+                        <div class="mt-5 rounded-xl bg-base-200 p-8 text-center text-sm text-base-content/55">برای این dimension هنوز attribution کافی وجود ندارد.</div>
+                    @else
+                        <div class="mt-5 space-y-4">
+                            @foreach($groups as $group)
+                                <article class="rounded-2xl border border-base-300 p-4 lg:p-5" wire:key="intelligence-group-{{ $dimension }}-{{ $group['key'] }}">
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <h3 class="text-base font-black">{{ $group['label'] }}</h3>
+                                                <span class="badge badge-sm {{ $this->statusClass($group['sample_status']) }}">{{ $this->statusLabel($group['sample_status']) }}</span>
+                                            </div>
+                                            @if(($group['meta']['pillar_name'] ?? null) !== null)
+                                                <div class="mt-1 text-xs text-base-content/45">Pillar: {{ $group['meta']['pillar_name'] }}</div>
+                                            @endif
+                                        </div>
+                                        <div class="flex gap-2 text-xs">
+                                            <span class="rounded-lg bg-base-200 px-3 py-2 font-mono">group n={{ $group['sample_size'] }}</span>
+                                            <span class="rounded-lg bg-base-200 px-3 py-2 font-mono">analytics n={{ $group['analytics_sample_size'] }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                                        @foreach($this->primaryMetrics() as $metric)
+                                            @php($metricRow = $group['metrics'][$metric])
+                                            @php($comparison = $group['comparisons'][$metric])
+                                            <div class="rounded-xl bg-base-200 p-3">
+                                                <div class="flex items-start justify-between gap-2">
+                                                    <span class="text-xs font-semibold text-base-content/55">{{ $this->metricLabels()[$metric] }}</span>
+                                                    <span class="badge badge-xs {{ $this->statusClass($comparison['evidence_status']) }}">{{ $this->statusLabel($comparison['evidence_status']) }}</span>
+                                                </div>
+                                                <div class="mt-3 flex items-end justify-between gap-3">
+                                                    <div>
+                                                        <div class="text-[10px] text-base-content/40">Group</div>
+                                                        <div class="font-mono text-lg font-black">{{ $this->formatMetric($metric, $metricRow['median']) }}</div>
+                                                    </div>
+                                                    <div class="text-left">
+                                                        <div class="text-[10px] text-base-content/40">Peers</div>
+                                                        <div class="font-mono text-sm font-bold">{{ $this->formatMetric($metric, $comparison['peer_median']) }}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-3 flex items-center justify-between gap-2 border-t border-base-300 pt-2 text-[11px]">
+                                                    <span class="font-mono font-semibold">Δ {{ $this->formatDelta($metric, $comparison['delta']) }}</span>
+                                                    <span class="text-base-content/45">n={{ $metricRow['sample_size'] }}/{{ $comparison['peer_sample_size'] }}</span>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    @endif
+                </section>
             @endif
-        </section>
+        </div>
+    @endisland
 
-        <section wire:transition="analysis-evidence" class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-base-content/40">Evidence</p>
-                    <h2 class="mt-1 text-lg font-black">Evidence candidates</h2>
-                    <p class="mt-1 max-w-3xl text-sm leading-6 text-base-content/55">
-                        فقط behavior metricها. Views و Reach تا قبل از age-normalized checkpoints وارد Evidence نمی‌شوند.
-                    </p>
+    @island(name: 'analysis-evidence', defer: true, always: true)
+        @placeholder
+            <div @class(['rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm', 'hidden' => $this->account === null]) aria-busy="true">
+                <div class="flex items-center justify-between gap-3 text-xs text-base-content/45">
+                    <span>در حال آماده‌سازی Evidence...</span>
+                    <span class="loading loading-dots loading-sm"></span>
                 </div>
-                <div class="flex gap-2 overflow-x-auto pb-1">
-                    @foreach($this->evidenceFilterOptions() as $key => $label)
-                        <button
-                            type="button"
-                            wire:click="$set('evidenceFilter', '{{ $key }}')"
-                            class="btn btn-xs shrink-0 {{ $evidenceFilter === $key ? 'btn-primary' : 'btn-ghost' }}"
-                        >
-                            {{ $label }}
-                            @if($key === 'eligible')
-                                <span class="opacity-60">{{ $evidenceCounts['eligible'] }}</span>
-                            @elseif($key === 'usable')
-                                <span class="opacity-60">{{ $evidenceCounts['usable'] }}</span>
-                            @elseif($key === 'exploratory')
-                                <span class="opacity-60">{{ $evidenceCounts['exploratory'] }}</span>
-                            @else
-                                <span class="opacity-60">{{ $evidenceCounts['total'] }}</span>
-                            @endif
-                        </button>
-                    @endforeach
-                </div>
-            </div>
-
-            @if($this->visibleEvidence->isEmpty())
-                <div class="mt-5 rounded-xl bg-base-200 p-7 text-center text-sm text-base-content/55">Evidence منطبق با این فیلتر وجود ندارد.</div>
-            @else
                 <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    @foreach($this->visibleEvidence->take(18) as $item)
-                        <article class="rounded-2xl border border-base-300 p-4" wire:key="evidence-{{ $dimension }}-{{ $item['group_key'] }}-{{ $item['metric'] }}">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <div class="text-xs font-semibold text-primary">{{ $this->metricLabels()[$item['metric']] }}</div>
-                                    <h3 class="mt-1 font-black">{{ $item['group_label'] }}</h3>
-                                    @if(($item['group_meta']['pillar_name'] ?? null) !== null)
-                                        <div class="mt-1 text-[11px] text-base-content/45">{{ $item['group_meta']['pillar_name'] }}</div>
-                                    @endif
-                                </div>
-                                <div class="flex flex-col items-end gap-1">
-                                    <span class="badge badge-sm {{ $this->statusClass($item['evidence_status']) }}">{{ $this->statusLabel($item['evidence_status']) }}</span>
-                                    @if($item['eligible'])
-                                        <span class="badge badge-primary badge-xs">Eligible</span>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <div class="mt-4 grid grid-cols-3 gap-2 text-center">
-                                <div class="rounded-lg bg-base-200 p-2">
-                                    <div class="text-[10px] text-base-content/40">Group</div>
-                                    <div class="mt-1 font-mono text-sm font-black">{{ $this->formatMetric($item['metric'], $item['group_median']) }}</div>
-                                    <div class="text-[10px] text-base-content/40">n={{ $item['group_sample_size'] }}</div>
-                                </div>
-                                <div class="rounded-lg bg-base-200 p-2">
-                                    <div class="text-[10px] text-base-content/40">Peers</div>
-                                    <div class="mt-1 font-mono text-sm font-black">{{ $this->formatMetric($item['metric'], $item['peer_median']) }}</div>
-                                    <div class="text-[10px] text-base-content/40">n={{ $item['peer_sample_size'] }}</div>
-                                </div>
-                                <div class="rounded-lg bg-base-200 p-2">
-                                    <div class="text-[10px] text-base-content/40">Overall</div>
-                                    <div class="mt-1 font-mono text-sm font-black">{{ $this->formatMetric($item['metric'], $item['overall_median']) }}</div>
-                                    <div class="text-[10px] text-base-content/40">n={{ $item['overall_sample_size'] }}</div>
-                                </div>
-                            </div>
-
-                            <div class="mt-3 grid grid-cols-2 gap-2">
-                                <div class="rounded-lg border border-base-300 px-3 py-2">
-                                    <div class="text-[10px] text-base-content/40">Delta</div>
-                                    <div class="mt-1 font-mono text-sm font-bold">{{ $this->formatDelta($item['metric'], $item['delta']) }}</div>
-                                </div>
-                                <div class="rounded-lg border border-base-300 px-3 py-2">
-                                    <div class="text-[10px] text-base-content/40">Relative lift</div>
-                                    <div class="mt-1 font-mono text-sm font-bold">{{ $this->formatLift($item['relative_lift']) }}</div>
-                                </div>
-                            </div>
-
-                            <div class="mt-3 text-xs text-base-content/55">{{ $this->directionLabel($item['direction']) }}</div>
-                        </article>
-                    @endforeach
+                    @for($i = 0; $i < 6; $i++)
+                        <div class="h-44 animate-pulse rounded-2xl bg-base-200"></div>
+                    @endfor
                 </div>
-            @endif
-        </section>
+            </div>
+        @endplaceholder
 
+        <div>
+            @if($this->account !== null)
+                @php($evidenceCounts = $this->evidenceCounts())
+
+                <section wire:transition="analysis-evidence" class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-base-content/40">Evidence</p>
+                            <h2 class="mt-1 text-lg font-black">Evidence candidates</h2>
+                            <p class="mt-1 max-w-3xl text-sm leading-6 text-base-content/55">
+                                فقط behavior metricها. Views و Reach تا قبل از age-normalized checkpoints وارد Evidence نمی‌شوند.
+                            </p>
+                        </div>
+                        <div class="flex gap-2 overflow-x-auto pb-1">
+                            @foreach($this->evidenceFilterOptions() as $key => $label)
+                                <button
+                                    type="button"
+                                    wire:click="$set('evidenceFilter', '{{ $key }}')"
+                                    class="btn btn-xs shrink-0 {{ $evidenceFilter === $key ? 'btn-primary' : 'btn-ghost' }}"
+                                >
+                                    {{ $label }}
+                                    @if($key === 'eligible')
+                                        <span class="opacity-60">{{ $evidenceCounts['eligible'] }}</span>
+                                    @elseif($key === 'usable')
+                                        <span class="opacity-60">{{ $evidenceCounts['usable'] }}</span>
+                                    @elseif($key === 'exploratory')
+                                        <span class="opacity-60">{{ $evidenceCounts['exploratory'] }}</span>
+                                    @else
+                                        <span class="opacity-60">{{ $evidenceCounts['total'] }}</span>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    @if($this->visibleEvidence->isEmpty())
+                        <div class="mt-5 rounded-xl bg-base-200 p-7 text-center text-sm text-base-content/55">Evidence منطبق با این فیلتر وجود ندارد.</div>
+                    @else
+                        <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            @foreach($this->visibleEvidence->take(18) as $item)
+                                <article class="rounded-2xl border border-base-300 p-4" wire:key="evidence-{{ $dimension }}-{{ $item['group_key'] }}-{{ $item['metric'] }}">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div class="text-xs font-semibold text-primary">{{ $this->metricLabels()[$item['metric']] }}</div>
+                                            <h3 class="mt-1 font-black">{{ $item['group_label'] }}</h3>
+                                            @if(($item['group_meta']['pillar_name'] ?? null) !== null)
+                                                <div class="mt-1 text-[11px] text-base-content/45">{{ $item['group_meta']['pillar_name'] }}</div>
+                                            @endif
+                                        </div>
+                                        <div class="flex flex-col items-end gap-1">
+                                            <span class="badge badge-sm {{ $this->statusClass($item['evidence_status']) }}">{{ $this->statusLabel($item['evidence_status']) }}</span>
+                                            @if($item['eligible'])
+                                                <span class="badge badge-primary badge-xs">Eligible</span>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                                        <div class="rounded-lg bg-base-200 p-2">
+                                            <div class="text-[10px] text-base-content/40">Group</div>
+                                            <div class="mt-1 font-mono text-sm font-black">{{ $this->formatMetric($item['metric'], $item['group_median']) }}</div>
+                                            <div class="text-[10px] text-base-content/40">n={{ $item['group_sample_size'] }}</div>
+                                        </div>
+                                        <div class="rounded-lg bg-base-200 p-2">
+                                            <div class="text-[10px] text-base-content/40">Peers</div>
+                                            <div class="mt-1 font-mono text-sm font-black">{{ $this->formatMetric($item['metric'], $item['peer_median']) }}</div>
+                                            <div class="text-[10px] text-base-content/40">n={{ $item['peer_sample_size'] }}</div>
+                                        </div>
+                                        <div class="rounded-lg bg-base-200 p-2">
+                                            <div class="text-[10px] text-base-content/40">Overall</div>
+                                            <div class="mt-1 font-mono text-sm font-black">{{ $this->formatMetric($item['metric'], $item['overall_median']) }}</div>
+                                            <div class="text-[10px] text-base-content/40">n={{ $item['overall_sample_size'] }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3 grid grid-cols-2 gap-2">
+                                        <div class="rounded-lg border border-base-300 px-3 py-2">
+                                            <div class="text-[10px] text-base-content/40">Delta</div>
+                                            <div class="mt-1 font-mono text-sm font-bold">{{ $this->formatDelta($item['metric'], $item['delta']) }}</div>
+                                        </div>
+                                        <div class="rounded-lg border border-base-300 px-3 py-2">
+                                            <div class="text-[10px] text-base-content/40">Relative lift</div>
+                                            <div class="mt-1 font-mono text-sm font-bold">{{ $this->formatLift($item['relative_lift']) }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3 text-xs text-base-content/55">{{ $this->directionLabel($item['direction']) }}</div>
+                                </article>
+                            @endforeach
+                        </div>
+                    @endif
+                </section>
+            @endif
+        </div>
+    @endisland
+
+    @if($this->account !== null)
         <section class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
             <div class="flex items-start gap-3">
                 <div class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-base-200">

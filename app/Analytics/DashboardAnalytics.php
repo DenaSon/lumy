@@ -27,6 +27,28 @@ final class DashboardAnalytics
             return $this->emptyProjection();
         }
 
+        return [
+            ...$this->buildCore($account),
+            'audience' => $this->audience($account),
+        ];
+    }
+
+    /**
+     * Build the dashboard projection that does not require demographic queries.
+     *
+     * This split lets the UI defer the main dashboard immediately after page load
+     * while keeping the below-the-fold audience section viewport-lazy.
+     *
+     * @return array<string, mixed>
+     */
+    public function buildCore(?SocialAccount $account = null): array
+    {
+        $account ??= $this->defaultAccount();
+
+        if ($account === null) {
+            return $this->emptyCoreProjection();
+        }
+
         $contents = $account->contents()
             ->with([
                 'annotation',
@@ -116,8 +138,19 @@ final class DashboardAnalytics
                     fn (Content $content) => $content->latestMetricSnapshot?->derivedMetrics()->retentionRate,
                 ),
             ],
-            'audience' => $this->audience($account),
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public function audienceProjection(?SocialAccount $account = null): array
+    {
+        $account ??= $this->defaultAccount();
+
+        if ($account === null) {
+            return $this->emptyProjection()['audience'];
+        }
+
+        return $this->audience($account);
     }
 
     public function defaultAccount(): ?SocialAccount
@@ -303,6 +336,15 @@ final class DashboardAnalytics
         }
 
         return $numerator / $denominator;
+    }
+
+    /** @return array<string, mixed> */
+    private function emptyCoreProjection(): array
+    {
+        $projection = $this->emptyProjection();
+        unset($projection['audience']);
+
+        return $projection;
     }
 
     /** @return array<string, mixed> */

@@ -6,6 +6,7 @@ use App\Analytics\DashboardAnalytics;
 use App\Models\Content;
 use App\Models\SocialAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class DashboardAnalyticsTest extends TestCase
@@ -109,7 +110,15 @@ class DashboardAnalyticsTest extends TestCase
             ]);
         }
 
-        $dashboard = app(DashboardAnalytics::class)->build($account);
+        $analytics = app(DashboardAnalytics::class);
+        $dashboard = $analytics->build($account);
+        $core = $analytics->buildCore($account);
+        $audience = $analytics->audienceProjection($account);
+
+        $this->assertArrayNotHasKey('audience', $core);
+        $this->assertSame($dashboard['content']['total'], $core['content']['total']);
+        $this->assertSame($dashboard['reels']['median_skip_rate'], $core['reels']['median_skip_rate']);
+        $this->assertSame($dashboard['audience']['captured_at']?->toISOString(), $audience['captured_at']?->toISOString());
 
         $this->assertSame(1000, $dashboard['growth']['followers_count']);
         $this->assertSame(20, $dashboard['growth']['followers_delta']);
@@ -138,7 +147,7 @@ class DashboardAnalyticsTest extends TestCase
         $this->assertSame('IR', $dashboard['audience']['countries']->first()->dimension);
     }
 
-    public function test_dashboard_page_renders_the_polished_overview_and_actions(): void
+    public function test_dashboard_page_defers_core_and_lazy_loads_audience_without_changing_final_content(): void
     {
         $account = $this->account();
 
@@ -172,18 +181,27 @@ class DashboardAnalyticsTest extends TestCase
         $this->get(route('dashboard'))
             ->assertOk()
             ->assertSee('داشبورد Lumy')
-            ->assertSee('Median High Intent')
-            ->assertSee('Follower trend')
-            ->assertSee('نیازمند توجه')
+            ->assertSee('در حال آماده‌سازی Dashboard...')
+            ->assertSee('در حال بارگذاری Audience...')
             ->assertSee('ثبت سریع Hook')
-            ->assertSee('محتواهای برتر')
-            ->assertSee('آمادگی داده برای Intelligence')
-            ->assertSee('خلاصه مخاطب')
-            ->assertSee('11,662')
-            ->assertSee('Dashboard reel')
-            ->assertSee('50.0%')
-            ->assertSee('40.0%')
-            ->assertSee('href="'.route('content.hooks').'"', false);
+            ->assertDontSee('Dashboard reel');
+
+        $component = Livewire::test('pages::panel.index');
+        $component->instance()->renderIsland('dashboard-core', mount: true);
+        $component->instance()->renderIsland('dashboard-audience', mount: true);
+        $loaded = implode("\n", $component->instance()->getRenderedIslandFragments());
+
+        $this->assertStringContainsString('Median High Intent', $loaded);
+        $this->assertStringContainsString('Follower trend', $loaded);
+        $this->assertStringContainsString('نیازمند توجه', $loaded);
+        $this->assertStringContainsString('محتواهای برتر', $loaded);
+        $this->assertStringContainsString('آمادگی داده برای Intelligence', $loaded);
+        $this->assertStringContainsString('خلاصه مخاطب', $loaded);
+        $this->assertStringContainsString('11,662', $loaded);
+        $this->assertStringContainsString('Dashboard reel', $loaded);
+        $this->assertStringContainsString('50.0%', $loaded);
+        $this->assertStringContainsString('40.0%', $loaded);
+        $this->assertStringContainsString('href="'.route('content.hooks').'"', $loaded);
     }
 
     private function account(): SocialAccount
