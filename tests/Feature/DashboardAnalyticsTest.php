@@ -52,6 +52,13 @@ class DashboardAnalyticsTest extends TestCase
             'goal' => 'education',
             'annotated_at' => '2026-09-07T13:00:00Z',
         ]);
+        $highIntent->hooks()->create([
+            'text' => 'Primary dashboard hook',
+            'type' => 'question',
+            'source' => 'video_overlay',
+            'position' => 0,
+            'is_primary' => true,
+        ]);
         $this->snapshot($highIntent, [
             'views' => 1000,
             'reach' => 800,
@@ -113,6 +120,9 @@ class DashboardAnalyticsTest extends TestCase
         $this->assertSame(2, $dashboard['content']['with_analytics']);
         $this->assertEqualsWithDelta(2 / 3, $dashboard['content']['analytics_coverage'], 0.000001);
         $this->assertSame(1, $dashboard['content']['annotated']);
+        $this->assertSame(1, $dashboard['content']['primary_hooks']);
+        $this->assertEqualsWithDelta(1 / 3, $dashboard['content']['primary_hook_coverage'], 0.000001);
+        $this->assertEqualsWithDelta(0.10, $dashboard['content']['median_high_intent'], 0.000001);
         $this->assertSame('Most viewed reel', $dashboard['content']['top_views']->first()['content']->caption);
         $this->assertSame('High intent reel', $dashboard['content']['top_high_intent']->first()['content']->caption);
 
@@ -128,9 +138,16 @@ class DashboardAnalyticsTest extends TestCase
         $this->assertSame('IR', $dashboard['audience']['countries']->first()->dimension);
     }
 
-    public function test_dashboard_page_renders_the_projection(): void
+    public function test_dashboard_page_renders_the_polished_overview_and_actions(): void
     {
         $account = $this->account();
+
+        $account->accountMetricSnapshots()->create([
+            'captured_at' => '2026-09-06T10:53:29Z',
+            'provider_updated_at' => '2026-09-06T10:53:29Z',
+            'snapshot_type' => 'follower_history',
+            'followers_count' => 11600,
+        ]);
 
         $account->accountMetricSnapshots()->create([
             'captured_at' => '2026-09-07T10:53:29Z',
@@ -155,10 +172,18 @@ class DashboardAnalyticsTest extends TestCase
         $this->get(route('dashboard'))
             ->assertOk()
             ->assertSee('داشبورد Lumy')
+            ->assertSee('Median High Intent')
+            ->assertSee('Follower trend')
+            ->assertSee('نیازمند توجه')
+            ->assertSee('ثبت سریع Hook')
+            ->assertSee('محتواهای برتر')
+            ->assertSee('آمادگی داده برای Intelligence')
+            ->assertSee('خلاصه مخاطب')
             ->assertSee('11,662')
             ->assertSee('Dashboard reel')
             ->assertSee('50.0%')
-            ->assertSee('40.0%');
+            ->assertSee('40.0%')
+            ->assertSee('href="'.route('content.hooks').'"', false);
     }
 
     private function account(): SocialAccount
