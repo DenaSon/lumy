@@ -169,6 +169,7 @@ final class DecisionContextExport
 
             if ($section['evidence'] === []) {
                 $lines[] = '_No eligible evidence._';
+
                 continue;
             }
 
@@ -316,7 +317,7 @@ final class DecisionContextExport
     }
 
     /**
-     * @param Collection<int, array{content: Content, value: int|float, derived: mixed}> $items
+     * @param  Collection<int, array{content: Content, value: int|float, derived: mixed}>  $items
      * @return array<int, array<string, mixed>>
      */
     private function serializeTopContents(Collection $items): array
@@ -465,17 +466,17 @@ final class DecisionContextExport
 
     private function number(int|float|string|null $value): string
     {
-        return $value === null || !is_numeric($value) ? '—' : number_format((float) $value, 0);
+        return $value === null || ! is_numeric($value) ? '—' : number_format((float) $value, 0);
     }
 
     private function percent(int|float|string|null $value): string
     {
-        return $value === null || !is_numeric($value) ? '—' : number_format((float) $value * 100, 1).'%';
+        return $value === null || ! is_numeric($value) ? '—' : number_format((float) $value * 100, 1).'%';
     }
 
     private function providerPercent(int|float|string|null $value): string
     {
-        return $value === null || !is_numeric($value) ? '—' : number_format((float) $value, 1).'%';
+        return $value === null || ! is_numeric($value) ? '—' : number_format((float) $value, 1).'%';
     }
 
     private function metric(string $metric, int|float|null $value): string
