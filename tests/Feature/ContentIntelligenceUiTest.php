@@ -55,6 +55,8 @@ class ContentIntelligenceUiTest extends TestCase
             ->assertSee('result')
             ->assertSee('Usable')
             ->assertSee('Relative lift')
+            ->assertSee('wire:transition="analysis-overview"', false)
+            ->assertSee('wire:transition="analysis-evidence"', false)
             ->assertSee('چطور این صفحه را بخوانیم؟');
     }
 
