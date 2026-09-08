@@ -111,7 +111,7 @@ class InstagramSyncServiceTest extends TestCase
                     'success' => true,
                     'accountId' => 'account_123',
                     'dateRange' => [
-                        'since' => '2026-06-10',
+                        'since' => '2026-06-11',
                         'until' => '2026-09-07',
                     ],
                     'metrics' => [
@@ -212,6 +212,12 @@ class InstagramSyncServiceTest extends TestCase
         $this->assertSame(1, $summary['contents']['created_count']);
         $this->assertSame(1, $summary['content_analytics']['created_count']);
 
+        Http::assertSent(fn (Request $request) => str_ends_with(parse_url($request->url(), PHP_URL_PATH), '/analytics/instagram/account-insights')
+            && $request['since'] === '2026-06-10'
+            && $request['until'] === '2026-09-07');
+        Http::assertSent(fn (Request $request) => str_ends_with(parse_url($request->url(), PHP_URL_PATH), '/analytics/instagram/follower-history')
+            && $request['since'] === '2026-06-11'
+            && $request['until'] === '2026-09-07');
         Http::assertSentCount(7);
     }
 

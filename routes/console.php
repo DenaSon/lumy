@@ -85,7 +85,7 @@ Artisan::command('lumy:sync-instagram {--only= : Run one stage: contents, conten
                 })(),
                 'demographics' => $service->syncDemographics($account),
                 'followers' => (function () use ($service, $account, $resolveRange) {
-                    [$from, $to] = $resolveRange(89);
+                    [$from, $to] = $resolveRange(88, 88);
 
                     return $service->syncFollowerHistory($account, $from, $to);
                 })(),

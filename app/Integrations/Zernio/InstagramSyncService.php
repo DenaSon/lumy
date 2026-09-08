@@ -24,6 +24,7 @@ class InstagramSyncService
 
         [$postFrom, $to] = $this->postAnalyticsRange($fromDate, $toDate);
         $accountSince = $to->subDays(89);
+        $followerSince = $to->subDays(88);
 
         $summary = [
             'social_account_id' => $account->id,
@@ -32,7 +33,7 @@ class InstagramSyncService
             'content_analytics' => $this->syncContentAnalytics($account, $postFrom->toDateString(), $to->toDateString()),
             'account_analytics' => $this->syncAccountInsights($account, $accountSince->toDateString(), $to->toDateString()),
             'demographics' => $this->syncDemographics($account),
-            'followers' => $this->syncFollowerHistory($account, $accountSince->toDateString(), $to->toDateString()),
+            'followers' => $this->syncFollowerHistory($account, $followerSince->toDateString(), $to->toDateString()),
         ];
 
         $account->update([
