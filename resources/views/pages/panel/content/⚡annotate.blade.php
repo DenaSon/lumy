@@ -40,15 +40,27 @@ new #[Layout('layouts.panel')] class extends Component
 
     public string $savedMessage = '';
 
+    public bool $hasUnsavedChanges = false;
+
     public function mount(Content $content): void
     {
         $this->content = $content;
         $this->loadForm();
     }
 
+    public function updated(string $property): void
+    {
+        if (! in_array($property, ['savedMessage', 'hasUnsavedChanges'], true)) {
+            $this->hasUnsavedChanges = true;
+            $this->savedMessage = '';
+        }
+    }
+
     public function addHook(): void
     {
         $this->hooks[] = $this->blankHook();
+        $this->hasUnsavedChanges = true;
+        $this->savedMessage = '';
     }
 
     public function removeHook(int $index): void
@@ -68,11 +80,16 @@ new #[Layout('layouts.panel')] class extends Component
         if ($this->hooks === []) {
             $this->hooks[] = $this->blankHook();
         }
+
+        $this->hasUnsavedChanges = true;
+        $this->savedMessage = '';
     }
 
     public function setPrimaryHook(int $index): void
     {
         $this->primaryHookIndex = array_key_exists($index, $this->hooks) ? $index : null;
+        $this->hasUnsavedChanges = true;
+        $this->savedMessage = '';
     }
 
     public function updatedSelectedTopicIds(): void
@@ -82,6 +99,9 @@ new #[Layout('layouts.panel')] class extends Component
         if ($this->primaryTopicId !== null && ! in_array($this->primaryTopicId, $selected, true)) {
             $this->primaryTopicId = null;
         }
+
+        $this->hasUnsavedChanges = true;
+        $this->savedMessage = '';
     }
 
     public function save(ContentAnnotationWriter $writer): void
@@ -296,6 +316,7 @@ new #[Layout('layouts.panel')] class extends Component
         );
 
         $this->loadForm();
+        $this->hasUnsavedChanges = false;
     }
 
     private function loadForm(): void
@@ -735,15 +756,24 @@ new #[Layout('layouts.panel')] class extends Component
                 </div>
             </section>
 
-            <div class="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-base-300 bg-base-100/95 p-4 shadow-lg backdrop-blur">
-                <div class="text-xs text-base-content/50">
-                    ذخیره، `annotated_at` را به زمان فعلی به‌روزرسانی می‌کند.
+            <div
+                class="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-base-300 bg-base-100/95 p-4 shadow-lg backdrop-blur"
+                wire:dirty.class="border-warning/60"
+            >
+                <div class="min-h-5 text-xs">
+                    <div wire:show="$dirty || $wire.hasUnsavedChanges" class="flex items-center gap-2 font-semibold text-warning">
+                        <x-icon name="o-exclamation-circle" class="size-4" />
+                        تغییرات ذخیره‌نشده
+                    </div>
+                    <div wire:show="!$dirty && !$wire.hasUnsavedChanges" class="text-base-content/45">
+                        همه‌ی تغییرات ذخیره شده‌اند.
+                    </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <button wire:click="save" wire:loading.attr="disabled" type="button" class="btn btn-outline">
+                    <button wire:click="save" wire:loading.attr="disabled" wire:dirty.class="ring-2 ring-warning/30" type="button" class="btn btn-outline">
                         ذخیره
                     </button>
-                    <button wire:click="saveAndNext" wire:loading.attr="disabled" type="button" class="btn btn-primary">
+                    <button wire:click="saveAndNext" wire:loading.attr="disabled" wire:dirty.class="ring-2 ring-warning/30" type="button" class="btn btn-primary">
                         Save & Next
                         <x-icon name="o-arrow-left" class="size-4" />
                     </button>
