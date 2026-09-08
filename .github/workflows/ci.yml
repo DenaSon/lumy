@@ -41,6 +41,11 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Audit dependencies
+        run: |
+          composer audit
+          npm audit --audit-level=moderate
+
       - name: Build frontend
         run: npm run build
 
