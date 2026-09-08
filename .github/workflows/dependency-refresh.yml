@@ -5,8 +5,12 @@ on:
     branches:
       - chore/runtime-dependency-upgrades
 
+permissions:
+  contents: write
+
 jobs:
   refresh:
+    if: ${{ ! contains(github.event.head_commit.message, '[skip refresh]') }}
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +27,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: '24.20.0'
+          node-version-file: '.nvmrc'
           cache: npm
 
       - name: Upgrade npm
@@ -32,26 +36,31 @@ jobs:
       - name: Prepare Laravel runtime directories
         run: mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 
-      - name: Install current dependencies
-        run: |
-          composer install --no-interaction --prefer-dist --no-progress
-          npm ci
+      - name: Refresh Composer dependencies
+        run: composer update --with-all-dependencies --no-interaction --prefer-dist --no-progress
 
-      - name: Collect dependency reports
-        run: |
-          node --version > runtime-report.txt
-          npm --version >> runtime-report.txt
-          composer --version >> runtime-report.txt
-          npm outdated --json > npm-outdated.json || true
-          npm audit --json > npm-audit.json || true
-          composer outdated --direct --format=json > composer-outdated.json || true
+      - name: Refresh npm dependencies
+        run: npm install
 
-      - name: Upload reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: dependency-reports
-          path: |
-            runtime-report.txt
-            npm-outdated.json
-            npm-audit.json
-            composer-outdated.json
+      - name: Audit dependencies
+        run: |
+          composer audit
+          npm audit --audit-level=moderate
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run checks
+        run: composer ci:check
+
+      - name: Commit refreshed lockfiles
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add composer.lock package-lock.json
+          if git diff --cached --quiet; then
+            echo "No lockfile changes to commit."
+          else
+            git commit -m "chore: refresh dependency locks [skip refresh]"
+            git push
+          fi
