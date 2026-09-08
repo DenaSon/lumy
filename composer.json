@@ -58,7 +58,7 @@
             "pint --parallel"
         ],
         "lint:check": [
-            "pint --parallel --test || (pint app/ContentIntelligence/DecisionContextExport.php && git diff -- app/ContentIntelligence/DecisionContextExport.php && exit 1)"
+            "pint --parallel --test"
         ],
         "ci:check": [
             "Composer\\Config::disableProcessTimeout",
