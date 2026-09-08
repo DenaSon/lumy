@@ -43,17 +43,22 @@ class ContentIntelligenceUiTest extends TestCase
 
         $this->get(route('intelligence.analysis'))
             ->assertOk()
-            ->assertSee('الگوهای عملکرد محتوا')
+            ->assertSee('تحلیل الگوهای محتوا')
             ->assertSee('Overall baseline')
             ->assertSee('Group vs peer baseline')
             ->assertSee('Evidence candidates')
+            ->assertSee('Eligible Evidence')
+            ->assertSee('Usable Evidence')
+            ->assertSee('Quick Hook')
             ->assertSee('Format')
             ->assertSee('question')
             ->assertSee('result')
-            ->assertSee('Usable');
+            ->assertSee('Usable')
+            ->assertSee('Relative lift')
+            ->assertSee('چطور این صفحه را بخوانیم؟');
     }
 
-    public function test_dimension_can_be_switched_and_invalid_dimension_falls_back(): void
+    public function test_dimension_and_evidence_filters_validate_their_url_state(): void
     {
         $account = $this->account();
         config(['zernio.account_id' => $account->provider_account_id]);
@@ -64,7 +69,13 @@ class ContentIntelligenceUiTest extends TestCase
             ->set('dimension', 'goal')
             ->assertSet('dimension', 'goal')
             ->set('dimension', 'not-a-dimension')
-            ->assertSet('dimension', 'primary_hook_type');
+            ->assertSet('dimension', 'primary_hook_type')
+            ->set('evidenceFilter', 'eligible')
+            ->assertSet('evidenceFilter', 'eligible')
+            ->set('evidenceFilter', 'usable')
+            ->assertSet('evidenceFilter', 'usable')
+            ->set('evidenceFilter', 'not-a-filter')
+            ->assertSet('evidenceFilter', 'all');
     }
 
     public function test_analysis_workspace_has_an_honest_empty_state_without_an_account(): void
