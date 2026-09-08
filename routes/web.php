@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DecisionContextExportController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/panel')->name('home');
@@ -21,3 +22,7 @@ Route::livewire('/panel/intelligence', 'pages::panel.intelligence.index')
 
 Route::livewire('/panel/intelligence/analysis', 'pages::panel.intelligence.analysis')
     ->name('intelligence.analysis');
+
+Route::get('/panel/exports/decision-context/{format}', DecisionContextExportController::class)
+    ->whereIn('format', ['json', 'markdown'])
+    ->name('decision-context.export');
