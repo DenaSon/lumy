@@ -60,6 +60,17 @@
                 </a>
             </li>
 
+            <li>
+                <a
+                    wire:navigate
+                    wire:current="menu-active"
+                    href="{{ route('content.hooks') }}"
+                >
+                    <x-icon name="o-bolt" class="w-5 h-5" />
+                    <span>ثبت سریع Hook</span>
+                </a>
+            </li>
+
             <li class="menu-title mt-3">
                 <span>هوشمندی</span>
             </li>

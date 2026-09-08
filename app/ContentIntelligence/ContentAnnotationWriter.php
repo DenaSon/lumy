@@ -64,6 +64,14 @@ final class ContentAnnotationWriter
         $content->unsetRelation('hooks');
     }
 
+    /** @param array<int, array<string, mixed>> $hooks */
+    public function saveHooks(Content $content, array $hooks): void
+    {
+        DB::transaction(fn () => $this->syncHooks($content, $hooks));
+
+        $content->unsetRelation('hooks');
+    }
+
     /**
      * @param  array<int, array<string, mixed>>  $hooks
      */
