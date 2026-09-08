@@ -85,7 +85,8 @@ class ContentIntelligenceSetupTest extends TestCase
         $this->get(route('intelligence.index'))
             ->assertOk()
             ->assertSee('Taxonomy و کیفیت Annotation')
-            ->assertSee('Annotation Coverage');
+            ->assertSee('Annotation Coverage')
+            ->assertSee('wire:sort="reorderTopic"', false);
 
         Livewire::test('pages::panel.intelligence.index')
             ->set('pillarName', 'DevOps')
@@ -142,6 +143,48 @@ class ContentIntelligenceSetupTest extends TestCase
         $this->assertFalse($pillar->fresh()->is_active);
         $this->assertDatabaseHas('topics', ['id' => $docker->id]);
         $this->assertDatabaseHas('content_pillars', ['id' => $pillar->id]);
+    }
+
+    public function test_topics_can_be_reordered_with_native_sort_handler(): void
+    {
+        $pillar = ContentPillar::create([
+            'name' => 'DevOps',
+            'slug' => 'devops-sort',
+            'sort_order' => 10,
+            'is_active' => true,
+        ]);
+
+        $first = Topic::create([
+            'content_pillar_id' => $pillar->id,
+            'name' => 'Docker',
+            'slug' => 'docker-sort',
+            'sort_order' => 10,
+            'is_active' => true,
+        ]);
+        $second = Topic::create([
+            'content_pillar_id' => $pillar->id,
+            'name' => 'Monitoring',
+            'slug' => 'monitoring-sort',
+            'sort_order' => 20,
+            'is_active' => true,
+        ]);
+        $third = Topic::create([
+            'content_pillar_id' => $pillar->id,
+            'name' => 'Networking',
+            'slug' => 'networking-sort',
+            'sort_order' => 30,
+            'is_active' => true,
+        ]);
+
+        Livewire::test('pages::panel.intelligence.index')
+            ->call('reorderTopic', $third->id, 0)
+            ->assertSet('savedMessage', 'ترتیب Topicها ذخیره شد.');
+
+        $this->assertSame(
+            [$third->id, $first->id, $second->id],
+            $pillar->fresh()->topics->pluck('id')->all(),
+        );
+        $this->assertSame([0, 1, 2], $pillar->fresh()->topics->pluck('sort_order')->all());
     }
 
     private function account(): SocialAccount
