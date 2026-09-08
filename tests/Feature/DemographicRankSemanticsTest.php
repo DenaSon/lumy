@@ -66,4 +66,32 @@ class DemographicRankSemanticsTest extends TestCase
                 ->all(),
         );
     }
+
+    public function test_cleanup_migration_can_resume_after_provider_position_column_already_exists(): void
+    {
+        $account = SocialAccount::create([
+            'platform' => 'instagram',
+            'provider' => 'zernio',
+            'username' => 'lumixo.dev',
+            'provider_account_id' => 'account_resume_rank_cleanup',
+        ]);
+
+        $snapshot = $account->demographicSnapshots()->create([
+            'captured_at' => '2026-09-07T13:30:00Z',
+            'dimension_type' => 'city',
+            'dimension' => 'Tabriz',
+            'value' => 2243,
+            'rank' => 2,
+            'provider_position' => null,
+            'is_partial' => true,
+        ]);
+
+        $migration = require database_path('migrations/2026_09_07_181000_cleanup_demographic_rank_semantics.php');
+        $migration->up();
+
+        $snapshot->refresh();
+
+        $this->assertNull($snapshot->rank);
+        $this->assertSame(2, $snapshot->provider_position);
+    }
 }
