@@ -20,4 +20,19 @@ class DashboardTest extends TestCase
         $this->get(route('dashboard'))
             ->assertOk();
     }
+
+    public function test_sidebar_keeps_primary_navigation_minimal_and_groups_intelligence(): void
+    {
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('داشبورد')
+            ->assertSee('محتوا')
+            ->assertSee('هوشمندی')
+            ->assertSee('تحلیل')
+            ->assertSee('تنظیمات')
+            ->assertSee('href="'.route('dashboard').'"', false)
+            ->assertSee('href="'.route('content.index').'"', false)
+            ->assertSee('href="'.route('intelligence.analysis').'"', false)
+            ->assertSee('href="'.route('intelligence.index').'"', false);
+    }
 }

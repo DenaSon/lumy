@@ -60,6 +60,10 @@
                 </a>
             </li>
 
+            <li class="menu-title mt-3">
+                <span>هوشمندی</span>
+            </li>
+
             <li>
                 <a
                     wire:navigate
@@ -67,7 +71,18 @@
                     href="{{ route('intelligence.analysis') }}"
                 >
                     <x-icon name="o-light-bulb" class="w-5 h-5" />
-                    <span>هوشمندی</span>
+                    <span>تحلیل</span>
+                </a>
+            </li>
+
+            <li>
+                <a
+                    wire:navigate
+                    wire:current="menu-active"
+                    href="{{ route('intelligence.index') }}"
+                >
+                    <x-icon name="o-adjustments-horizontal" class="w-5 h-5" />
+                    <span>تنظیمات</span>
                 </a>
             </li>
         </ul>
