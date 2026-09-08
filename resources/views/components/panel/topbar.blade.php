@@ -76,6 +76,27 @@
             "
         >
 
+            <details class="dropdown dropdown-end">
+                <summary class="btn btn-outline btn-sm list-none gap-2">
+                    <x-icon name="o-arrow-down-tray" class="size-4" />
+                    <span class="hidden sm:inline">Decision Context</span>
+                </summary>
+                <ul class="menu dropdown-content z-[60] mt-2 w-52 rounded-box border border-base-300 bg-base-100 p-2 shadow-xl">
+                    <li>
+                        <a href="{{ route('decision-context.export', ['format' => 'json']) }}">
+                            <x-icon name="o-code-bracket" class="size-4" />
+                            Export JSON
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('decision-context.export', ['format' => 'markdown']) }}">
+                            <x-icon name="o-document-text" class="size-4" />
+                            Export Markdown
+                        </a>
+                    </li>
+                </ul>
+            </details>
+
             <div
                 class="
                     hidden
