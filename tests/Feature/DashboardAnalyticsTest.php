@@ -186,19 +186,22 @@ class DashboardAnalyticsTest extends TestCase
             ->assertSee('ثبت سریع Hook')
             ->assertDontSee('Dashboard reel');
 
-        Livewire::withoutLazyLoading()
-            ->test('pages::panel.index')
-            ->assertSee('Median High Intent')
-            ->assertSee('Follower trend')
-            ->assertSee('نیازمند توجه')
-            ->assertSee('محتواهای برتر')
-            ->assertSee('آمادگی داده برای Intelligence')
-            ->assertSee('خلاصه مخاطب')
-            ->assertSee('11,662')
-            ->assertSee('Dashboard reel')
-            ->assertSee('50.0%')
-            ->assertSee('40.0%')
-            ->assertSee('href="'.route('content.hooks').'"', false);
+        $component = Livewire::test('pages::panel.index');
+        $component->instance()->renderIsland('dashboard-core', mount: true);
+        $component->instance()->renderIsland('dashboard-audience', mount: true);
+        $loaded = implode("\n", $component->instance()->getRenderedIslandFragments());
+
+        $this->assertStringContainsString('Median High Intent', $loaded);
+        $this->assertStringContainsString('Follower trend', $loaded);
+        $this->assertStringContainsString('نیازمند توجه', $loaded);
+        $this->assertStringContainsString('محتواهای برتر', $loaded);
+        $this->assertStringContainsString('آمادگی داده برای Intelligence', $loaded);
+        $this->assertStringContainsString('خلاصه مخاطب', $loaded);
+        $this->assertStringContainsString('11,662', $loaded);
+        $this->assertStringContainsString('Dashboard reel', $loaded);
+        $this->assertStringContainsString('50.0%', $loaded);
+        $this->assertStringContainsString('40.0%', $loaded);
+        $this->assertStringContainsString('href="'.route('content.hooks').'"', $loaded);
     }
 
     private function account(): SocialAccount
