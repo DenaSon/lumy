@@ -5,14 +5,12 @@ namespace App\ContentIntelligence;
 use App\Analytics\DashboardAnalytics;
 use App\Models\Content;
 use App\Models\SocialAccount;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Build a deterministic, AI-ready decision context from the same analytical
- * services that power Lumy's Dashboard and Content Intelligence UI.
- *
- * The export is intentionally descriptive. It does not generate strategy,
- * recommendations, significance claims, or causal claims.
+ * Build a deterministic decision context from the same analytical services
+ * that power Lumy's Dashboard and Content Intelligence UI.
  */
 final class DecisionContextExport
 {
@@ -94,25 +92,25 @@ final class DecisionContextExport
         $lines = [
             '# Lumy Decision Context',
             '',
-            '> Deterministic export for manual AI analysis. Treat this as evidence, not as causal proof.',
+            '> Deterministic export for manual AI analysis. Treat this as evidence, not causal proof.',
             '',
             '## Account',
             '',
             '- Account: @'.($account['username'] ?? 'unknown'),
             '- Generated at: '.$context['meta']['generated_at'],
-            '- Followers: '.$this->markdownNumber($account['followers_count']),
-            '- Content: '.$this->markdownNumber($account['content_count']),
-            '- Analytics coverage: '.$this->markdownPercent($account['analytics_coverage']),
-            '- Annotation coverage: '.$this->markdownPercent($account['annotation_coverage']),
-            '- Primary Hook coverage: '.$this->markdownPercent($account['primary_hook_coverage']),
+            '- Followers: '.$this->number($account['followers_count']),
+            '- Content: '.$this->number($account['content_count']),
+            '- Analytics coverage: '.$this->percent($account['analytics_coverage']),
+            '- Annotation coverage: '.$this->percent($account['annotation_coverage']),
+            '- Primary Hook coverage: '.$this->percent($account['primary_hook_coverage']),
             '',
             '## Account Insights',
             '',
             '- Period: '.($account['account_insights']['period_start'] ?? '—').' → '.($account['account_insights']['period_end'] ?? '—'),
-            '- Reach: '.$this->markdownNumber($account['account_insights']['reach']),
-            '- Views: '.$this->markdownNumber($account['account_insights']['views']),
-            '- Accounts engaged: '.$this->markdownNumber($account['account_insights']['accounts_engaged']),
-            '- Total interactions: '.$this->markdownNumber($account['account_insights']['total_interactions']),
+            '- Reach: '.$this->number($account['account_insights']['reach']),
+            '- Views: '.$this->number($account['account_insights']['views']),
+            '- Accounts engaged: '.$this->number($account['account_insights']['accounts_engaged']),
+            '- Total interactions: '.$this->number($account['account_insights']['total_interactions']),
             '',
             '## Performance Baseline',
             '',
@@ -123,34 +121,32 @@ final class DecisionContextExport
         ];
 
         foreach ($baseline['metrics'] as $metric => $item) {
-            $lines[] = '| '.$this->metricLabel($metric).' | '.$this->markdownMetric($metric, $item['median']).' | '.$item['sample_size'].' | '.$item['sample_status'].' |';
+            $lines[] = '| '.$this->metricLabel($metric).' | '.$this->metric($metric, $item['median']).' | '.$item['sample_size'].' | '.$item['sample_status'].' |';
         }
 
-        $lines = [
-            ...$lines,
-            '',
-            '## Audience Summary',
-            '',
-            '### Age',
-            '',
-        ];
+        $lines[] = '';
+        $lines[] = '## Audience Summary';
+        $lines[] = '';
+        $lines[] = '### Age';
+        $lines[] = '';
 
         foreach ($audience['age'] as $row) {
-            $lines[] = '- '.$row['dimension'].': '.$this->markdownPercent($row['share']);
+            $lines[] = '- '.$row['dimension'].': '.$this->percent($row['share']);
         }
 
         $lines[] = '';
         $lines[] = '### Gender';
         $lines[] = '';
+
         foreach ($audience['gender'] as $row) {
-            $lines[] = '- '.$row['dimension'].': '.$this->markdownPercent($row['share']);
+            $lines[] = '- '.$row['dimension'].': '.$this->percent($row['share']);
         }
 
         $lines[] = '';
         $lines[] = '### Top locations';
         $lines[] = '';
-        $lines[] = '- Cities: '.collect($audience['cities'])->map(fn (array $row) => $row['dimension'].' ('.$this->markdownNumber($row['value']).')')->implode(', ');
-        $lines[] = '- Countries: '.collect($audience['countries'])->map(fn (array $row) => $row['dimension'].' ('.$this->markdownNumber($row['value']).')')->implode(', ');
+        $lines[] = '- Cities: '.collect($audience['cities'])->map(fn (array $row) => $row['dimension'].' ('.$this->number($row['value']).')')->implode(', ');
+        $lines[] = '- Countries: '.collect($audience['countries'])->map(fn (array $row) => $row['dimension'].' ('.$this->number($row['value']).')')->implode(', ');
 
         foreach (['by_views' => 'Top Content by Views', 'by_high_intent' => 'Top Content by High Intent'] as $key => $title) {
             $lines[] = '';
@@ -158,32 +154,13 @@ final class DecisionContextExport
             $lines[] = '';
 
             foreach ($context['top_content'][$key] as $content) {
-                $lines[] = '### Content #'.$content['id'].' · '.($content['content_type'] ?? 'unknown');
-                $lines[] = '';
-                $lines[] = '- Caption: '.str_replace(["\r", "\n"], ' ', (string) ($content['caption'] ?? ''));
-                $lines[] = '- Published: '.($content['published_at'] ?? '—');
-                $lines[] = '- Views: '.$this->markdownNumber($content['metrics']['views']);
-                $lines[] = '- Reach: '.$this->markdownNumber($content['metrics']['reach']);
-                $lines[] = '- Save Rate: '.$this->markdownPercent($content['metrics']['save_rate']);
-                $lines[] = '- Share Rate: '.$this->markdownPercent($content['metrics']['share_rate']);
-                $lines[] = '- High Intent: '.$this->markdownPercent($content['metrics']['high_intent_rate']);
-                $lines[] = '- Retention: '.$this->markdownPercent($content['metrics']['retention_rate']);
-                $lines[] = '- Skip Rate: '.$this->markdownProviderPercent($content['metrics']['skip_rate']);
-                $lines[] = '- Pillar: '.($content['content_dna']['primary_pillar']['name'] ?? '—');
-                $lines[] = '- Topic: '.($content['content_dna']['primary_topic']['name'] ?? '—');
-                $lines[] = '- Hook: '.($content['content_dna']['primary_hook']['text'] ?? '—');
-                $lines[] = '- Hook Type: '.($content['content_dna']['primary_hook']['type'] ?? '—');
-                $lines[] = '- Hook Source: '.($content['content_dna']['primary_hook']['source'] ?? '—');
-                $lines[] = '- Goal: '.($content['content_dna']['goal'] ?? '—');
-                $lines[] = '- CTA: '.($content['content_dna']['cta_type'] ?? '—');
-                $lines[] = '- Production Style: '.($content['content_dna']['production_style'] ?? '—');
-                $lines[] = '';
+                $lines = [...$lines, ...$this->contentMarkdown($content)];
             }
         }
 
         $lines[] = '## Intelligence Evidence';
         $lines[] = '';
-        $lines[] = 'Only eligible evidence is exported. Insufficient, same-direction-neutral, and missing comparisons are omitted.';
+        $lines[] = 'Only eligible evidence is exported. Insufficient, same, and missing comparisons are omitted.';
 
         foreach ($context['intelligence'] as $dimension => $section) {
             $lines[] = '';
@@ -199,7 +176,7 @@ final class DecisionContextExport
             $lines[] = '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |';
 
             foreach ($section['evidence'] as $item) {
-                $lines[] = '| `'.$item['evidence_id'].'` | '.$item['group_label'].' | '.$this->metricLabel($item['metric']).' | '.$this->markdownMetric($item['metric'], $item['group_median']).' | '.$this->markdownMetric($item['metric'], $item['peer_median']).' | '.$this->markdownDelta($item['metric'], $item['delta']).' | '.$this->markdownLift($item['relative_lift']).' | '.$item['group_sample_size'].'/'.$item['peer_sample_size'].' | '.$item['evidence_status'].' | '.$item['direction'].' |';
+                $lines[] = '| `'.$item['evidence_id'].'` | '.$item['group_label'].' | '.$this->metricLabel($item['metric']).' | '.$this->metric($item['metric'], $item['group_median']).' | '.$this->metric($item['metric'], $item['peer_median']).' | '.$this->delta($item['metric'], $item['delta']).' | '.$this->lift($item['relative_lift']).' | '.$item['group_sample_size'].'/'.$item['peer_sample_size'].' | '.$item['evidence_status'].' | '.$item['direction'].' |';
             }
         }
 
@@ -316,7 +293,7 @@ final class DecisionContextExport
     private function audience(array $audience): array
     {
         return [
-            'captured_at' => $audience['captured_at']?->utc()->toIso8601String(),
+            'captured_at' => $this->date($audience['captured_at']),
             'age' => $audience['age']->map(fn (array $item) => [
                 'dimension' => $item['row']->dimension,
                 'value' => $item['row']->value,
@@ -443,6 +420,33 @@ final class DecisionContextExport
         ];
     }
 
+    /** @param array<string, mixed> $content */
+    private function contentMarkdown(array $content): array
+    {
+        return [
+            '### Content #'.$content['id'].' · '.($content['content_type'] ?? 'unknown'),
+            '',
+            '- Caption: '.str_replace(["\r", "\n"], ' ', (string) ($content['caption'] ?? '')),
+            '- Published: '.($content['published_at'] ?? '—'),
+            '- Views: '.$this->number($content['metrics']['views']),
+            '- Reach: '.$this->number($content['metrics']['reach']),
+            '- Save Rate: '.$this->percent($content['metrics']['save_rate']),
+            '- Share Rate: '.$this->percent($content['metrics']['share_rate']),
+            '- High Intent: '.$this->percent($content['metrics']['high_intent_rate']),
+            '- Retention: '.$this->percent($content['metrics']['retention_rate']),
+            '- Skip Rate: '.$this->providerPercent($content['metrics']['skip_rate']),
+            '- Pillar: '.($content['content_dna']['primary_pillar']['name'] ?? '—'),
+            '- Topic: '.($content['content_dna']['primary_topic']['name'] ?? '—'),
+            '- Hook: '.($content['content_dna']['primary_hook']['text'] ?? '—'),
+            '- Hook Type: '.($content['content_dna']['primary_hook']['type'] ?? '—'),
+            '- Hook Source: '.($content['content_dna']['primary_hook']['source'] ?? '—'),
+            '- Goal: '.($content['content_dna']['goal'] ?? '—'),
+            '- CTA: '.($content['content_dna']['cta_type'] ?? '—'),
+            '- Production Style: '.($content['content_dna']['production_style'] ?? '—'),
+            '',
+        ];
+    }
+
     private function metricLabel(string $metric): string
     {
         return match ($metric) {
@@ -459,33 +463,33 @@ final class DecisionContextExport
         };
     }
 
-    private function markdownNumber(int|float|string|null $value): string
+    private function number(int|float|string|null $value): string
     {
-        return $value === null || ! is_numeric($value) ? '—' : number_format((float) $value, 0);
+        return $value === null || !is_numeric($value) ? '—' : number_format((float) $value, 0);
     }
 
-    private function markdownPercent(int|float|string|null $value): string
+    private function percent(int|float|string|null $value): string
     {
-        return $value === null || ! is_numeric($value) ? '—' : number_format((float) $value * 100, 1).'%';
+        return $value === null || !is_numeric($value) ? '—' : number_format((float) $value * 100, 1).'%';
     }
 
-    private function markdownProviderPercent(int|float|string|null $value): string
+    private function providerPercent(int|float|string|null $value): string
     {
-        return $value === null || ! is_numeric($value) ? '—' : number_format((float) $value, 1).'%';
+        return $value === null || !is_numeric($value) ? '—' : number_format((float) $value, 1).'%';
     }
 
-    private function markdownMetric(string $metric, int|float|null $value): string
+    private function metric(string $metric, int|float|null $value): string
     {
         if ($value === null) {
             return '—';
         }
 
         return $metric === 'skip_rate'
-            ? $this->markdownProviderPercent($value)
-            : $this->markdownPercent($value);
+            ? $this->providerPercent($value)
+            : $this->percent($value);
     }
 
-    private function markdownDelta(string $metric, int|float|null $value): string
+    private function delta(string $metric, int|float|null $value): string
     {
         if ($value === null) {
             return '—';
@@ -496,7 +500,7 @@ final class DecisionContextExport
         return ($formatted > 0 ? '+' : '').number_format($formatted, 1).' pp';
     }
 
-    private function markdownLift(int|float|null $value): string
+    private function lift(int|float|null $value): string
     {
         if ($value === null) {
             return '—';
@@ -505,5 +509,14 @@ final class DecisionContextExport
         $percent = (float) $value * 100;
 
         return ($percent > 0 ? '+' : '').number_format($percent, 1).'%';
+    }
+
+    private function date(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return Carbon::parse($value)->utc()->toIso8601String();
     }
 }
