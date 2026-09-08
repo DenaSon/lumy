@@ -319,7 +319,7 @@ new #[Layout('layouts.panel')] class extends Component
             </div>
         </section>
 
-        <section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <section wire:transition="analysis-overview" class="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
                 <div class="text-xs text-base-content/50">Attributed Content</div>
                 <div class="mt-1 text-2xl font-black">{{ number_format($analysis['attributed_sample_size']) }}</div>
@@ -342,7 +342,7 @@ new #[Layout('layouts.panel')] class extends Component
             </div>
         </section>
 
-        <section class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+        <section wire:transition="analysis-baseline" class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wide text-base-content/40">Reference</p>
@@ -367,7 +367,7 @@ new #[Layout('layouts.panel')] class extends Component
             </div>
         </section>
 
-        <section class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+        <section wire:transition="analysis-groups" class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
             <div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wide text-base-content/40">Comparison</p>
@@ -433,7 +433,7 @@ new #[Layout('layouts.panel')] class extends Component
             @endif
         </section>
 
-        <section class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+        <section wire:transition="analysis-evidence" class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wide text-base-content/40">Evidence</p>
