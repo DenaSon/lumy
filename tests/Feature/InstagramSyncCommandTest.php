@@ -100,6 +100,31 @@ class InstagramSyncCommandTest extends TestCase
         ])->assertExitCode(1);
     }
 
+    public function test_followers_use_provider_safe_default_range_and_reject_longer_ranges(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-07 12:00:00', 'UTC'));
+        $account = $this->account();
+
+        $this->mock(InstagramSyncService::class, function (MockInterface $mock) use ($account) {
+            $mock->shouldReceive('syncFollowerHistory')
+                ->once()
+                ->withArgs(fn (SocialAccount $received, string $from, string $to) => $received->is($account)
+                    && $from === '2026-06-11'
+                    && $to === '2026-09-07')
+                ->andReturn($this->syncResult(discovered: 1, created: 1));
+        });
+
+        $this->artisan('lumy:sync-instagram', [
+            '--only' => 'followers',
+        ])->assertExitCode(0);
+
+        $this->artisan('lumy:sync-instagram', [
+            '--only' => 'followers',
+            '--from' => '2026-06-10',
+            '--to' => '2026-09-07',
+        ])->assertExitCode(1);
+    }
+
     public function test_partial_stage_result_returns_non_zero_exit_code(): void
     {
         $account = $this->account();
