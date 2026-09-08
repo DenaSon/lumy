@@ -30,6 +30,7 @@ final class DashboardAnalytics
         $contents = $account->contents()
             ->with([
                 'annotation',
+                'hooks',
                 'coverMedia',
                 'latestMetricSnapshot',
             ])
@@ -63,8 +64,17 @@ final class DashboardAnalytics
             ->map(fn ($value) => (float) $value)
             ->values();
 
+        $highIntentValues = $contents
+            ->map(fn (Content $content) => $content->latestMetricSnapshot?->derivedMetrics()->highIntentRate)
+            ->filter(fn ($value) => $value !== null)
+            ->map(fn ($value) => (float) $value)
+            ->values();
+
         $withAnalytics = $contents->filter(fn (Content $content) => $content->latestMetricSnapshot !== null)->count();
         $annotated = $contents->filter(fn (Content $content) => $content->annotation !== null)->count();
+        $primaryHooks = $contents
+            ->filter(fn (Content $content) => $content->hooks->contains(fn ($hook) => (bool) $hook->is_primary))
+            ->count();
 
         return [
             'account' => $account,
@@ -83,6 +93,9 @@ final class DashboardAnalytics
                 'analytics_coverage' => $this->ratio($withAnalytics, $contents->count()),
                 'annotated' => $annotated,
                 'annotation_coverage' => $this->ratio($annotated, $contents->count()),
+                'primary_hooks' => $primaryHooks,
+                'primary_hook_coverage' => $this->ratio($primaryHooks, $contents->count()),
+                'median_high_intent' => $this->median($highIntentValues),
                 'top_views' => $this->topContents($contents, fn (Content $content) => $content->latestMetricSnapshot?->views),
                 'top_saves' => $this->topContents($contents, fn (Content $content) => $content->latestMetricSnapshot?->saves),
                 'top_high_intent' => $this->topContents(
@@ -310,6 +323,9 @@ final class DashboardAnalytics
                 'analytics_coverage' => null,
                 'annotated' => 0,
                 'annotation_coverage' => null,
+                'primary_hooks' => 0,
+                'primary_hook_coverage' => null,
+                'median_high_intent' => null,
                 'top_views' => collect(),
                 'top_saves' => collect(),
                 'top_high_intent' => collect(),
