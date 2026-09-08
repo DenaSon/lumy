@@ -23,6 +23,8 @@ new #[Layout('layouts.panel')] class extends Component
 
     public string $savedMessage = '';
 
+    public bool $hasUnsavedChanges = false;
+
     /** @var array<int, int> */
     public array $skippedContentIds = [];
 
@@ -33,6 +35,14 @@ new #[Layout('layouts.panel')] class extends Component
         }
 
         $this->loadHooks();
+    }
+
+    public function updated(string $property): void
+    {
+        if (! in_array($property, ['contentId', 'savedMessage', 'hasUnsavedChanges', 'skippedContentIds'], true)) {
+            $this->hasUnsavedChanges = true;
+            $this->savedMessage = '';
+        }
     }
 
     #[Computed]
@@ -98,6 +108,7 @@ new #[Layout('layouts.panel')] class extends Component
         }
 
         $this->hooks[] = $this->blankHook();
+        $this->markUnsaved();
     }
 
     public function removeHook(int $index): void
@@ -118,12 +129,15 @@ new #[Layout('layouts.panel')] class extends Component
             $this->hooks[] = $this->blankHook();
             $this->primaryHookIndex = 0;
         }
+
+        $this->markUnsaved();
     }
 
     public function setPrimaryHook(int $index): void
     {
         if (array_key_exists($index, $this->hooks)) {
             $this->primaryHookIndex = $index;
+            $this->markUnsaved();
         }
     }
 
@@ -131,6 +145,7 @@ new #[Layout('layouts.panel')] class extends Component
     {
         if (array_key_exists($index, $this->hooks) && array_key_exists($type, $this->hookTypes())) {
             $this->hooks[$index]['type'] = $type;
+            $this->markUnsaved();
         }
     }
 
@@ -138,6 +153,7 @@ new #[Layout('layouts.panel')] class extends Component
     {
         if (array_key_exists($index, $this->hooks) && array_key_exists($source, $this->hookSources())) {
             $this->hooks[$index]['source'] = $source;
+            $this->markUnsaved();
         }
     }
 
@@ -171,6 +187,7 @@ new #[Layout('layouts.panel')] class extends Component
         }
 
         $this->bulkHooks = '';
+        $this->markUnsaved();
     }
 
     public function save(ContentAnnotationWriter $writer): void
@@ -310,12 +327,14 @@ new #[Layout('layouts.panel')] class extends Component
         $writer->saveHooks($content, $hookRows);
         unset($this->content, $this->queueSummary);
         $this->loadHooks();
+        $this->hasUnsavedChanges = false;
     }
 
     private function selectContent(int $contentId): void
     {
         $this->contentId = $contentId;
         $this->savedMessage = '';
+        $this->hasUnsavedChanges = false;
         unset($this->content, $this->queueSummary);
         $this->loadHooks();
     }
@@ -327,6 +346,7 @@ new #[Layout('layouts.panel')] class extends Component
         if ($content === null) {
             $this->hooks = [];
             $this->primaryHookIndex = null;
+            $this->hasUnsavedChanges = false;
 
             return;
         }
@@ -359,6 +379,7 @@ new #[Layout('layouts.panel')] class extends Component
             $this->primaryHookIndex = 0;
         }
 
+        $this->hasUnsavedChanges = false;
         $this->resetValidation();
     }
 
@@ -387,6 +408,12 @@ new #[Layout('layouts.panel')] class extends Component
             'source' => '',
             'notes' => '',
         ];
+    }
+
+    private function markUnsaved(): void
+    {
+        $this->hasUnsavedChanges = true;
+        $this->savedMessage = '';
     }
 };
 ?>
@@ -592,15 +619,27 @@ new #[Layout('layouts.panel')] class extends Component
                     Add another hook
                 </button>
 
-                <div class="sticky bottom-3 z-10 rounded-2xl border border-base-300 bg-base-100/95 p-4 shadow-xl backdrop-blur">
+                <div
+                    class="sticky bottom-3 z-10 rounded-2xl border border-base-300 bg-base-100/95 p-4 shadow-xl backdrop-blur"
+                    wire:dirty.class="border-warning/60"
+                >
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div class="text-xs text-base-content/50">
-                            <span class="font-semibold">⌘/Ctrl + Enter</span> = ذخیره و رفتن به محتوای بعدی
+                        <div class="space-y-1 text-xs">
+                            <div wire:show="$dirty || $wire.hasUnsavedChanges" class="flex items-center gap-2 font-semibold text-warning">
+                                <x-icon name="o-exclamation-circle" class="size-4" />
+                                تغییرات Hook ذخیره‌نشده است.
+                            </div>
+                            <div wire:show="!$dirty && !$wire.hasUnsavedChanges" class="text-base-content/45">
+                                Hook فعلی ذخیره شده است.
+                            </div>
+                            <div class="text-base-content/50">
+                                <span class="font-semibold">⌘/Ctrl + Enter</span> = ذخیره و رفتن به محتوای بعدی
+                            </div>
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <button wire:click="skip" wire:loading.attr="disabled" type="button" class="btn btn-ghost">رد کردن</button>
-                            <button wire:click="save" wire:loading.attr="disabled" type="button" class="btn btn-outline">ذخیره</button>
-                            <button wire:click="saveAndNext" wire:loading.attr="disabled" type="button" class="btn btn-primary">
+                            <button wire:click="save" wire:loading.attr="disabled" wire:dirty.class="ring-2 ring-warning/30" type="button" class="btn btn-outline">ذخیره</button>
+                            <button wire:click="saveAndNext" wire:loading.attr="disabled" wire:dirty.class="ring-2 ring-warning/30" type="button" class="btn btn-primary">
                                 Save & Next Missing
                                 <x-icon name="o-arrow-left" class="size-4" />
                             </button>

@@ -24,11 +24,13 @@ class QuickHookWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('ثبت سریع Hook')
             ->assertSee('Hook Coverage')
+            ->assertSee('تغییرات Hook ذخیره‌نشده است.')
             ->assertSee($content->caption);
 
         Livewire::test('pages::panel.content.hooks')
             ->set('bulkHooks', "Hook one\nHook two\nHook three")
             ->call('importBulkHooks')
+            ->assertSet('hasUnsavedChanges', true)
             ->assertSet('primaryHookIndex', 0)
             ->assertSet('hooks', fn (array $hooks) => count($hooks) === 3
                 && $hooks[0]['text'] === 'Hook one'
@@ -65,9 +67,11 @@ class QuickHookWorkflowTest extends TestCase
         Livewire::test('pages::panel.content.hooks')
             ->assertSet('contentId', $newer->id)
             ->set('hooks.0.text', '۵ دستور لینوکس که باید بلد باشی')
+            ->assertSet('hasUnsavedChanges', true)
             ->call('setHookType', 0, 'list')
             ->call('setHookSource', 0, 'video_overlay')
             ->call('saveAndNext')
+            ->assertSet('hasUnsavedChanges', false)
             ->assertSet('contentId', $older->id);
 
         $hook = $newer->hooks()->first();

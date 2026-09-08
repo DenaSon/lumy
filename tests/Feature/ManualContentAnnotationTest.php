@@ -22,7 +22,8 @@ class ManualContentAnnotationTest extends TestCase
             ->assertOk()
             ->assertSee('Annotation محتوا')
             ->assertSee('Content ready for annotation')
-            ->assertSee('Hooks');
+            ->assertSee('Hooks')
+            ->assertSee('تغییرات ذخیره‌نشده');
     }
 
     public function test_manual_annotation_saves_dna_topics_and_multiple_hooks(): void
@@ -48,6 +49,7 @@ class ManualContentAnnotationTest extends TestCase
 
         Livewire::test('pages::panel.content.annotate', ['content' => $content])
             ->set('primaryPillarId', $pillar->id)
+            ->assertSet('hasUnsavedChanges', true)
             ->set('goal', 'education')
             ->set('ctaType', 'save')
             ->set('targetAudience', 'Linux users')
@@ -75,6 +77,7 @@ class ManualContentAnnotationTest extends TestCase
             ->set('primaryHookIndex', 1)
             ->call('save')
             ->assertHasNoErrors()
+            ->assertSet('hasUnsavedChanges', false)
             ->assertSet('savedMessage', 'Annotation ذخیره شد.');
 
         $annotation = $content->fresh()->annotation;

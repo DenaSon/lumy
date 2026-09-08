@@ -4,6 +4,7 @@ use App\ContentIntelligence\AnnotationCoverage;
 use App\Models\ContentPillar;
 use App\Models\Topic;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -141,6 +142,35 @@ new #[Layout('layouts.panel')] class extends Component
         unset($this->pillars, $this->coverage);
     }
 
+    public function reorderTopic(string|int $topicId, int $position): void
+    {
+        $topic = Topic::query()->findOrFail((int) $topicId);
+        $orderedIds = Topic::query()
+            ->where('content_pillar_id', $topic->content_pillar_id)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $orderedIds = array_values(array_filter(
+            $orderedIds,
+            fn (int $id) => $id !== $topic->id,
+        ));
+        $position = max(0, min($position, count($orderedIds)));
+        array_splice($orderedIds, $position, 0, [$topic->id]);
+
+        DB::transaction(function () use ($orderedIds) {
+            foreach ($orderedIds as $index => $id) {
+                Topic::query()->whereKey($id)->update(['sort_order' => $index]);
+            }
+        });
+
+        $this->savedMessage = 'ترتیب Topicها ذخیره شد.';
+        unset($this->pillars);
+    }
+
     public function editTopic(int $topicId): void
     {
         $topic = Topic::query()->findOrFail($topicId);
@@ -274,7 +304,7 @@ new #[Layout('layouts.panel')] class extends Component
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <h2 class="text-lg font-black">Topics</h2>
-                    <p class="text-sm text-base-content/55">هر Topic دقیقاً به یک Pillar تعلق دارد.</p>
+                    <p class="text-sm text-base-content/55">هر Topic دقیقاً به یک Pillar تعلق دارد؛ ترتیب نهایی را پایین صفحه drag کن.</p>
                 </div>
                 @if($editingTopicId !== null)
                     <button type="button" wire:click="resetTopicForm" class="btn btn-ghost btn-sm">لغو ویرایش</button>
@@ -293,7 +323,7 @@ new #[Layout('layouts.panel')] class extends Component
                 </label>
                 <label class="form-control"><span class="label-text mb-1 text-xs">Name</span><input wire:model="topicName" class="input input-bordered" placeholder="Permissions" /></label>
                 <label class="form-control"><span class="label-text mb-1 text-xs">Slug</span><input wire:model="topicSlug" class="input input-bordered" placeholder="permissions" dir="ltr" /></label>
-                <label class="form-control"><span class="label-text mb-1 text-xs">Sort order</span><input wire:model="topicSortOrder" type="number" min="0" class="input input-bordered" /></label>
+                <label class="form-control"><span class="label-text mb-1 text-xs">Initial sort order</span><input wire:model="topicSortOrder" type="number" min="0" class="input input-bordered" /></label>
                 <label class="form-control justify-end"><span class="label cursor-pointer justify-start gap-3 pt-6"><input wire:model="topicIsActive" type="checkbox" class="toggle toggle-primary" /><span class="label-text">Active</span></span></label>
                 <label class="form-control md:col-span-2"><span class="label-text mb-1 text-xs">Description</span><textarea wire:model="topicDescription" class="textarea textarea-bordered" rows="2"></textarea></label>
             </div>
@@ -313,7 +343,7 @@ new #[Layout('layouts.panel')] class extends Component
     <section class="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
         <div class="border-b border-base-300 px-5 py-4">
             <h2 class="text-lg font-black">Taxonomy فعلی</h2>
-            <p class="text-sm text-base-content/55">ترتیب نمایش بر اساس sort order است؛ غیرفعال‌کردن رکوردها assignmentهای قبلی را حفظ می‌کند.</p>
+            <p class="text-sm text-base-content/55">Topicها را با دستگیره جابه‌جا کن؛ ترتیب همان لحظه ذخیره می‌شود. غیرفعال‌کردن رکوردها assignmentهای قبلی را حفظ می‌کند.</p>
         </div>
 
         @if($this->pillars->isEmpty())
@@ -340,18 +370,33 @@ new #[Layout('layouts.panel')] class extends Component
                             </div>
                         </div>
 
-                        <div class="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                        <div class="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3" wire:sort="reorderTopic">
                             @forelse($pillar->topics as $topic)
-                                <div class="rounded-xl border border-base-300 p-3" wire:key="topic-{{ $topic->id }}">
+                                <div
+                                    class="rounded-xl border border-base-300 p-3"
+                                    wire:key="topic-{{ $topic->id }}"
+                                    wire:sort:item="{{ $topic->id }}"
+                                >
                                     <div class="flex items-start justify-between gap-2">
-                                        <div>
-                                            <div class="flex flex-wrap items-center gap-2">
-                                                <span class="text-sm font-bold">{{ $topic->name }}</span>
-                                                <span class="badge {{ $topic->is_active ? 'badge-success' : 'badge-neutral' }} badge-xs">{{ $topic->is_active ? 'Active' : 'Inactive' }}</span>
+                                        <div class="flex min-w-0 items-start gap-2">
+                                            <button
+                                                type="button"
+                                                wire:sort:handle
+                                                class="btn btn-ghost btn-xs cursor-grab px-1 active:cursor-grabbing"
+                                                aria-label="جابجایی {{ $topic->name }}"
+                                                title="Drag to reorder"
+                                            >
+                                                <x-icon name="o-bars-3" class="size-4" />
+                                            </button>
+                                            <div class="min-w-0">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <span class="text-sm font-bold">{{ $topic->name }}</span>
+                                                    <span class="badge {{ $topic->is_active ? 'badge-success' : 'badge-neutral' }} badge-xs">{{ $topic->is_active ? 'Active' : 'Inactive' }}</span>
+                                                </div>
+                                                <div class="mt-1 text-[11px] text-base-content/45">{{ $topic->slug }} · order {{ $topic->sort_order }} · {{ number_format($topic->contents_count) }} content</div>
                                             </div>
-                                            <div class="mt-1 text-[11px] text-base-content/45">{{ $topic->slug }} · order {{ $topic->sort_order }} · {{ number_format($topic->contents_count) }} content</div>
                                         </div>
-                                        <div class="flex gap-1">
+                                        <div class="flex gap-1" wire:sort:ignore>
                                             <button type="button" wire:click="editTopic({{ $topic->id }})" class="btn btn-ghost btn-xs">Edit</button>
                                             <button type="button" wire:click="toggleTopic({{ $topic->id }})" class="btn btn-ghost btn-xs">{{ $topic->is_active ? 'Off' : 'On' }}</button>
                                         </div>

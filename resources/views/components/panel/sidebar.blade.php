@@ -40,7 +40,7 @@
         <ul class="menu w-full px-3 gap-1">
             <li>
                 <a
-                    wire:navigate
+                    wire:navigate.hover
                     wire:current="menu-active"
                     href="{{ route('dashboard') }}"
                 >
@@ -51,7 +51,7 @@
 
             <li>
                 <a
-                    wire:navigate
+                    wire:navigate.hover
                     wire:current="menu-active"
                     href="{{ route('content.index') }}"
                 >
@@ -62,7 +62,7 @@
 
             <li>
                 <a
-                    wire:navigate
+                    wire:navigate.hover
                     wire:current="menu-active"
                     href="{{ route('content.hooks') }}"
                 >
@@ -77,7 +77,7 @@
 
             <li>
                 <a
-                    wire:navigate
+                    wire:navigate.hover
                     wire:current="menu-active"
                     href="{{ route('intelligence.analysis') }}"
                 >
@@ -88,7 +88,7 @@
 
             <li>
                 <a
-                    wire:navigate
+                    wire:navigate.hover
                     wire:current="menu-active"
                     href="{{ route('intelligence.index') }}"
                 >
