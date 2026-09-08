@@ -18,7 +18,7 @@ class ContentIntelligenceEvidenceTest extends TestCase
         $account = $this->account();
 
         foreach (range(1, 5) as $index) {
-            $content = $this->content($account, 'curiosity');
+            $content = $this->content($account, 'curiosity', 'reel');
             $this->snapshot($content, [
                 'views' => 100,
                 'reach' => 90,
@@ -33,7 +33,7 @@ class ContentIntelligenceEvidenceTest extends TestCase
         }
 
         foreach (range(6, 10) as $index) {
-            $content = $this->content($account, 'statement');
+            $content = $this->content($account, 'statement', 'carousel');
             $this->snapshot($content, [
                 'views' => 100,
                 'reach' => 90,
@@ -88,6 +88,17 @@ class ContentIntelligenceEvidenceTest extends TestCase
         $this->assertTrue($skipEvidence['eligible']);
         $this->assertNull($evidence->firstWhere('metric', 'views'));
         $this->assertNull($evidence->firstWhere('metric', 'reach'));
+
+        $formatEvidence = app(ContentIntelligenceEvidence::class)
+            ->dimension($account, 'format');
+        $reelSaveEvidence = $formatEvidence
+            ->where('group_key', 'reel')
+            ->firstWhere('metric', 'save_rate');
+
+        $this->assertNotNull($reelSaveEvidence);
+        $this->assertSame('usable', $reelSaveEvidence['evidence_status']);
+        $this->assertTrue($reelSaveEvidence['eligible']);
+        $this->assertEqualsWithDelta(0.10, $reelSaveEvidence['delta'], 0.000001);
     }
 
     public function test_evidence_status_uses_the_weaker_metric_sample_and_zero_peer_baseline_has_no_relative_lift(): void
@@ -157,7 +168,7 @@ class ContentIntelligenceEvidenceTest extends TestCase
         ]);
     }
 
-    private function content(SocialAccount $account, string $hookType): Content
+    private function content(SocialAccount $account, string $hookType, string $contentType = 'reel'): Content
     {
         static $sequence = 0;
         $sequence++;
@@ -165,7 +176,7 @@ class ContentIntelligenceEvidenceTest extends TestCase
         $content = $account->contents()->create([
             'platform_post_id' => 'evidence_post_'.$sequence,
             'caption' => 'Evidence fixture '.$sequence,
-            'content_type' => 'reel',
+            'content_type' => $contentType,
             'analytics_status' => 'available',
             'published_at' => '2026-09-07T08:00:00Z',
         ]);

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Integrations\Zernio\InstagramSyncFreshness;
 use App\Integrations\Zernio\InstagramSyncService;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
@@ -160,13 +161,54 @@ class InstagramSyncCommandTest extends TestCase
             ->assertExitCode(1);
     }
 
-    public function test_local_scheduler_registers_incremental_and_daily_refreshes(): void
+    public function test_freshness_check_refreshes_only_stale_stages(): void
+    {
+        $now = CarbonImmutable::parse('2026-09-07 12:00:00', 'UTC');
+        CarbonImmutable::setTestNow($now);
+        $account = $this->account();
+
+        $this->completedRun($account, 'contents', $now->subHours(3));
+        $this->completedRun($account, 'content_analytics', $now->subHours(3));
+        $this->completedRun($account, 'account_analytics', $now->subHours(23));
+        $this->completedRun($account, 'demographics', $now->subHours(23));
+        $this->completedRun($account, 'followers', $now->subHours(23));
+
+        $status = app(InstagramSyncFreshness::class)->status($account, $now);
+        $this->assertTrue($status['incremental']['due']);
+        $this->assertFalse($status['account-insights']['due']);
+        $this->assertFalse($status['demographics']['due']);
+        $this->assertFalse($status['followers']['due']);
+
+        $this->mock(InstagramSyncService::class, function (MockInterface $mock) use ($account) {
+            $mock->shouldReceive('syncContents')
+                ->once()
+                ->withArgs(fn (SocialAccount $received) => $received->is($account))
+                ->andReturn($this->syncResult(discovered: 111, updated: 111));
+            $mock->shouldReceive('syncContentAnalytics')
+                ->once()
+                ->withArgs(fn (SocialAccount $received, string $from, string $to) => $received->is($account)
+                    && $from === '2026-08-08'
+                    && $to === '2026-09-07')
+                ->andReturn($this->syncResult(discovered: 20, updated: 20));
+            $mock->shouldNotReceive('syncAccountInsights');
+            $mock->shouldNotReceive('syncDemographics');
+            $mock->shouldNotReceive('syncFollowerHistory');
+        });
+
+        $this->artisan('lumy:sync-instagram-fresh')
+            ->assertExitCode(0);
+    }
+
+    public function test_soft_freshness_check_does_not_break_local_runtime_before_bootstrap(): void
+    {
+        $this->artisan('lumy:sync-instagram-fresh', ['--soft' => true])
+            ->assertExitCode(0);
+    }
+
+    public function test_local_scheduler_registers_freshness_watch(): void
     {
         $this->artisan('schedule:list')
-            ->expectsOutputToContain('lumy:sync-instagram-incremental')
-            ->expectsOutputToContain('--only=account-insights')
-            ->expectsOutputToContain('--only=demographics')
-            ->expectsOutputToContain('--only=followers')
+            ->expectsOutputToContain('lumy:sync-instagram-fresh')
             ->assertExitCode(0);
     }
 
@@ -177,6 +219,17 @@ class InstagramSyncCommandTest extends TestCase
             'provider' => 'zernio',
             'username' => 'lumixo.dev',
             'provider_account_id' => 'account_command',
+        ]);
+    }
+
+    private function completedRun(SocialAccount $account, string $syncType, CarbonImmutable $finishedAt): void
+    {
+        $account->syncRuns()->create([
+            'provider' => 'zernio',
+            'sync_type' => $syncType,
+            'status' => 'completed',
+            'started_at' => $finishedAt->subMinute(),
+            'finished_at' => $finishedAt,
         ]);
     }
 

@@ -137,6 +137,25 @@ Coverage is reported as observed counts and selected rates. Missing annotation i
 
 Coverage is a read-only projection and is not persisted.
 
+## V1 analysis dimensions
+
+Primary-attribution analysis currently supports:
+
+- Primary Hook Type
+- Primary Hook Source
+- Primary Topic
+- Primary Pillar
+- Format
+- Goal
+- CTA Type
+- Production Style
+
+Hook and Topic analyses use only their primary assignment so one content item cannot inflate a primary comparison by appearing multiple times in the same dimension.
+
+`Format` is factual rather than manual. It comes from normalized `contents.content_type`, for example `reel`, `carousel`, or `feed`. Missing content type is excluded instead of being converted into an invented `Unknown` group.
+
+Every group uses the same median, metric-specific sample-size, peer-baseline, and evidence semantics. Views and Reach remain descriptive lifetime scale metrics until age-normalized checkpoints are available; behavioral metrics such as Save Rate, Share Rate, High Intent, Retention, and Skip Rate may surface as evidence candidates when the sample threshold is met.
+
 ## Design invariants
 
 1. Manual intelligence never overwrites factual provider data.
@@ -149,6 +168,8 @@ Coverage is a read-only projection and is not persisted.
 8. Derived KPIs and performance scores are not stored in these tables.
 9. Taxonomy ordering is editorial structure, not analytics ranking.
 10. Coverage metrics must reflect observed fields only and never infer missing values.
+11. Primary-attribution analysis counts one content item at most once per dimension group.
+12. Factual Format analysis uses normalized content type and remains separate from manual annotation.
 
 ## Analysis enabled by this model
 
@@ -161,6 +182,7 @@ Examples:
 - Topic → Reach
 - Topic → High Intent Rate
 - Pillar → Retention
+- Format → Save / Share / High Intent / Retention profile
 - Content Goal → Performance profile
 - Production Style → Watch Time
 

@@ -98,6 +98,7 @@ new #[Layout('layouts.panel')] class extends Component
             'primary_hook_source' => 'Hook Source',
             'primary_topic' => 'Topic',
             'primary_pillar' => 'Pillar',
+            'format' => 'Format',
             'goal' => 'Goal',
             'cta_type' => 'CTA',
             'production_style' => 'Production Style',

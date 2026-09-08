@@ -127,6 +127,7 @@ class ContentIntelligenceAggregationTest extends TestCase
             hookSource: 'video_overlay',
             ctaType: 'save',
             productionStyle: 'screen',
+            contentType: 'carousel',
         );
         $this->snapshot($fourth, '2026-09-07T10:03:00Z', [
             'views' => 300,
@@ -148,6 +149,7 @@ class ContentIntelligenceAggregationTest extends TestCase
             hookSource: 'spoken',
             ctaType: 'comment',
             productionStyle: 'screen',
+            contentType: 'carousel',
         );
 
         $foreign = $this->annotatedContent(
@@ -205,6 +207,13 @@ class ContentIntelligenceAggregationTest extends TestCase
         $this->assertSame(2, $permissionsGroup['sample_size']);
         $this->assertSame('Linux', $commandsGroup['meta']['pillar_name']);
 
+        $reel = $projection['dimensions']['format']->firstWhere('key', 'reel');
+        $carousel = $projection['dimensions']['format']->firstWhere('key', 'carousel');
+        $this->assertSame(3, $reel['sample_size']);
+        $this->assertSame('exploratory', $reel['sample_status']);
+        $this->assertSame(2, $carousel['sample_size']);
+        $this->assertSame('insufficient', $carousel['sample_status']);
+
         $education = $projection['dimensions']['goal']->firstWhere('key', 'education');
         $this->assertSame(5, $education['sample_size']);
         $this->assertSame(4, $education['analytics_sample_size']);
@@ -247,6 +256,7 @@ class ContentIntelligenceAggregationTest extends TestCase
         string $hookSource,
         string $ctaType,
         string $productionStyle,
+        string $contentType = 'reel',
     ): Content {
         static $sequence = 0;
         $sequence++;
@@ -254,7 +264,7 @@ class ContentIntelligenceAggregationTest extends TestCase
         $content = $account->contents()->create([
             'platform_post_id' => 'intelligence_post_'.$sequence,
             'caption' => 'Intelligence fixture '.$sequence,
-            'content_type' => 'reel',
+            'content_type' => $contentType,
             'analytics_status' => 'available',
             'published_at' => '2026-09-07T08:00:00Z',
         ]);

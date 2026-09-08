@@ -1,5 +1,6 @@
 <?php
 
+use App\Integrations\Zernio\InstagramSyncFreshness;
 use App\Integrations\Zernio\InstagramSyncService;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
@@ -205,22 +206,69 @@ Artisan::command('lumy:sync-instagram-incremental {--days=30 : Rolling number of
     return $hasFailures ? 1 : 0;
 })->purpose('Refresh recent Instagram content metadata and analytics without a full historical sync.');
 
-Schedule::command('lumy:sync-instagram-incremental')
-    ->name('lumy-instagram-incremental')
-    ->everyTwoHours()
-    ->withoutOverlapping();
+Artisan::command('lumy:sync-instagram-fresh {--soft : Report sync failures without returning a non-zero exit code}', function () {
+    $soft = (bool) $this->option('soft');
 
-Schedule::command('lumy:sync-instagram --only=account-insights')
-    ->name('lumy-instagram-account-insights')
-    ->dailyAt('02:00')
-    ->withoutOverlapping();
+    try {
+        $providerAccountId = trim((string) config('zernio.account_id'));
 
-Schedule::command('lumy:sync-instagram --only=demographics')
-    ->name('lumy-instagram-demographics')
-    ->dailyAt('02:15')
-    ->withoutOverlapping();
+        if ($providerAccountId === '') {
+            throw new RuntimeException('ZERNIO_ACCOUNT_ID is not configured.');
+        }
 
-Schedule::command('lumy:sync-instagram --only=followers')
-    ->name('lumy-instagram-followers')
-    ->dailyAt('02:30')
+        $account = SocialAccount::query()
+            ->where('provider', 'zernio')
+            ->where('provider_account_id', $providerAccountId)
+            ->first();
+
+        if ($account === null) {
+            throw new RuntimeException('No local Zernio social account exists yet. Run `php artisan lumy:sync-instagram` once to bootstrap the account.');
+        }
+
+        $status = app(InstagramSyncFreshness::class)->status($account);
+    } catch (Throwable $exception) {
+        $soft ? $this->warn($exception->getMessage()) : $this->error($exception->getMessage());
+
+        return $soft ? 0 : 1;
+    }
+
+    $dueStages = collect($status)
+        ->filter(fn (array $stage) => $stage['due'])
+        ->keys()
+        ->values();
+
+    if ($dueStages->isEmpty()) {
+        $this->info('Instagram data is fresh. No sync required.');
+
+        return 0;
+    }
+
+    $this->info('Refreshing stale Instagram stages: '.$dueStages->implode(', '));
+    $failedStages = [];
+
+    foreach ($dueStages as $stage) {
+        $exitCode = $stage === 'incremental'
+            ? $this->call('lumy:sync-instagram-incremental')
+            : $this->call('lumy:sync-instagram', ['--only' => $stage]);
+
+        if ($exitCode !== 0) {
+            $failedStages[] = $stage;
+        }
+    }
+
+    if ($failedStages !== []) {
+        $message = 'Freshness refresh failed for: '.implode(', ', $failedStages).'. See sync_runs and logs for details.';
+        $soft ? $this->warn($message) : $this->error($message);
+
+        return $soft ? 0 : 1;
+    }
+
+    $this->info('Instagram freshness refresh completed.');
+
+    return 0;
+})->purpose('Refresh only Instagram stages whose last completed sync is stale.');
+
+Schedule::command('lumy:sync-instagram-fresh --soft')
+    ->name('lumy-instagram-freshness')
+    ->everyMinute()
     ->withoutOverlapping();

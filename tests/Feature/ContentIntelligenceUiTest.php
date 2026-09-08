@@ -47,6 +47,7 @@ class ContentIntelligenceUiTest extends TestCase
             ->assertSee('Overall baseline')
             ->assertSee('Group vs peer baseline')
             ->assertSee('Evidence candidates')
+            ->assertSee('Format')
             ->assertSee('question')
             ->assertSee('result')
             ->assertSee('Usable');
@@ -58,6 +59,8 @@ class ContentIntelligenceUiTest extends TestCase
         config(['zernio.account_id' => $account->provider_account_id]);
 
         Livewire::test('pages::panel.intelligence.analysis')
+            ->set('dimension', 'format')
+            ->assertSet('dimension', 'format')
             ->set('dimension', 'goal')
             ->assertSet('dimension', 'goal')
             ->set('dimension', 'not-a-dimension')
