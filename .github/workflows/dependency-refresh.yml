@@ -29,6 +29,9 @@ jobs:
       - name: Upgrade npm
         run: npm install --global npm@12.0.2
 
+      - name: Prepare Laravel runtime directories
+        run: mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+
       - name: Install current dependencies
         run: |
           composer install --no-interaction --prefer-dist --no-progress
