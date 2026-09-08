@@ -50,20 +50,24 @@ class ContentIntelligenceUiTest extends TestCase
             ->assertSee('در حال آماده‌سازی Evidence...')
             ->assertDontSee('question');
 
-        Livewire::withoutLazyLoading()
-            ->test('pages::panel.intelligence.analysis')
-            ->assertSee('Overall baseline')
-            ->assertSee('Group vs peer baseline')
-            ->assertSee('Evidence candidates')
-            ->assertSee('Eligible Evidence')
-            ->assertSee('Usable Evidence')
-            ->assertSee('question')
-            ->assertSee('result')
-            ->assertSee('Usable')
-            ->assertSee('Relative lift')
-            ->assertSee('wire:transition="analysis-baseline"', false)
-            ->assertSee('wire:transition="analysis-evidence"', false)
-            ->assertSee('چطور این صفحه را بخوانیم؟');
+        $component = Livewire::test('pages::panel.intelligence.analysis');
+        $component->instance()->renderIsland('analysis-core', mount: true);
+        $component->instance()->renderIsland('analysis-evidence', mount: true);
+        $loaded = implode("\n", $component->instance()->getRenderedIslandFragments());
+
+        $this->assertStringContainsString('Overall baseline', $loaded);
+        $this->assertStringContainsString('Group vs peer baseline', $loaded);
+        $this->assertStringContainsString('Evidence candidates', $loaded);
+        $this->assertStringContainsString('Eligible Evidence', $loaded);
+        $this->assertStringContainsString('Usable Evidence', $loaded);
+        $this->assertStringContainsString('question', $loaded);
+        $this->assertStringContainsString('result', $loaded);
+        $this->assertStringContainsString('Usable', $loaded);
+        $this->assertStringContainsString('Relative lift', $loaded);
+        $this->assertStringContainsString('wire:transition="analysis-baseline"', $loaded);
+        $this->assertStringContainsString('wire:transition="analysis-evidence"', $loaded);
+
+        $component->assertSee('چطور این صفحه را بخوانیم؟');
     }
 
     public function test_dimension_and_evidence_filters_validate_their_url_state(): void
@@ -71,8 +75,7 @@ class ContentIntelligenceUiTest extends TestCase
         $account = $this->account();
         config(['zernio.account_id' => $account->provider_account_id]);
 
-        Livewire::withoutLazyLoading()
-            ->test('pages::panel.intelligence.analysis')
+        Livewire::test('pages::panel.intelligence.analysis')
             ->set('dimension', 'format')
             ->assertSet('dimension', 'format')
             ->set('dimension', 'goal')
